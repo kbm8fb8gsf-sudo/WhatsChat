@@ -18,6 +18,12 @@ export default defineConfig(
         },
     },
     {
+        files: ['server/test/**/*.ts'],
+        rules: {
+            '@typescript-eslint/no-non-null-assertion': 'off',
+        },
+    },
+    {
         files: ['extension/**/*.js'],
         languageOptions: {
             globals: { ...globals.browser, SillyTavern: 'readonly' },
