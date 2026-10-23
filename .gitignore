@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+# Runtime state: WhatsApp session and config. Never commit.
+data/
+*.log

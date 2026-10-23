@@ -1,0 +1,16 @@
+{
+    "display_name": "WhatsChat",
+    "loading_order": 100,
+    "requires": [],
+    "optional": [],
+    "js": "extension/index.js",
+    "css": "extension/style.css",
+    "author": "Lewis Johnson",
+    "version": "0.1.0",
+    "homePage": "https://github.com/kbm8fb8gsf-sudo/WhatsChat",
+    "minimum_client_version": "1.19.0",
+    "auto_update": false,
+    "hooks": {
+        "activate": "onActivate"
+    }
+}

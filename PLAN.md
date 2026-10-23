@@ -85,7 +85,7 @@ A zod schema with defaults and a `version` field. It's persisted atomically (tem
 
 ## 3. Realistic text mode
 
-**Your message was cut off at "Presets:".** Until you send the real list, these are placeholders. Every value can be overridden per contact.
+These are the confirmed presets. Each contact can pick its own preset, and global overrides apply on top of it.
 
 | Preset | Read delay | Think | Typing speed | Gap between bubbles | Split | Typing indicator |
 |---|---|---|---|---|---|---|
@@ -118,8 +118,8 @@ Typing time per bubble is clamped to 1.5–25 s with ±20 % jitter. The default 
 9. **Docs + polish:** README (install both halves, `enableServerPlugins`, rebuild after updates, the dedicated-number advice) and the manual end-to-end checklist.
 
 ## 6. Decisions I need from you
-1. **The presets section was truncated.** Please send the intended presets and any other realistic-mode rules, such as quiet hours or "seen but no reply".
-2. Is it OK to use **`/script.js` imports in `st-bridge.js`** for `sendMessageAsUser`, `doNewChat` and the busy flags (gap 1/2 above)? The alternative is building the message manually.
+1. ✅ **Decided:** the four presets in section 3 are confirmed as written.
+2. ✅ **Decided:** option A. `st-bridge.js` imports `sendMessageAsUser`, `doNewChat` and the busy flags from `/script.js`. If an import is missing it fails loudly with an error in the panel.
 3. ✅ **Decided:** pin `baileys@7.0.0-rc14`.
 4. ✅ **Decided:** single characters only in v1. SillyTavern group chats can't be mapped.
-5. SillyTavern expands `{{macros}}` in user messages, so an approved contact could type them. My proposal: neutralise `{{` in inbound text by default.
+5. ✅ **Decided:** neutralise `{{` in inbound text by default by inserting an invisible zero-width space, so it displays unchanged but isn't expanded. A config toggle (`inbound.neutraliseMacros`) turns this off.

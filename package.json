@@ -1,0 +1,36 @@
+{
+  "name": "whatschat",
+  "version": "0.1.0",
+  "description": "SillyTavern add-on: chat with your SillyTavern characters over WhatsApp.",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p extension/jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "qrcode": "^1.5.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.20.5",
+    "@types/qrcode": "^1.5.6",
+    "eslint": "^10.13.0",
+    "express": "^4.22.3",
+    "globals": "^17.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}
