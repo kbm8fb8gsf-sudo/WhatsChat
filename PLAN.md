@@ -123,3 +123,18 @@ Typing time per bubble is clamped to 1.5–25 s with ±20 % jitter. The default 
 3. ✅ **Decided:** pin `baileys@7.0.0-rc14`.
 4. ✅ **Decided:** single characters only in v1. SillyTavern group chats can't be mapped.
 5. ✅ **Decided:** neutralise `{{` in inbound text by default by inserting an invisible zero-width space, so it displays unchanged but isn't expanded. A config toggle (`inbound.neutraliseMacros`) turns this off.
+
+## 7. Implementation notes
+
+What changed from the plan while building, and how it was checked.
+
+- **Transport interface:** as planned, plus `logout()` and `onStatus()`. The QR code is passed as `pairingCode` in the status and rendered to a PNG by the `/qr` route.
+- **Tab identity:** each tab picks its own client id and sends it when opening `/events`. A tab that drops its stream has 10 s to reconnect before its claimed batch is offered again, so a network blip can't make SillyTavern answer the same messages twice. Claims are also leases (2 min), renewed every 30 s while generating.
+- **Best-effort presence:** read receipts and "typing…" never cancel a reply if they fail. Only a failed message send drops the rest of that reply (after 3 retries).
+- **Removed `whatsapp.browserName`:** Baileys doesn't support custom device names.
+- **Startup:** the extension's `activate` hook mounts the panel, then waits for `APP_READY` without awaiting it, because SillyTavern awaits the hook while loading.
+- **Verified in a real SillyTavern 1.19** (scratch install, headless Chromium):
+  - The real plugin loads through the plugin loader, mounts at `/api/plugins/whatschat`, and exits within about 1.3 s on SIGINT while reconnecting.
+  - With a stand-in transport and a mock OpenAI-compatible model, the full loop worked: two quick messages became one user message; they were marked read, "typing…" was shown, and the reply went out as two cleaned bubbles; a new chat was created and saved to the contact; the previous chat was restored; the note reached the model as a system message; a contact's `{{user}}` was not expanded; and streamed replies were captured in full.
+  - The smoke test found two UI bugs: the QR box showed while connected, and the panel filled in before characters had loaded. Both are fixed.
+- **Not verified here:** pairing and messaging against WhatsApp's real servers, which aren't reachable from the build container. See `docs/manual-test.md`.
