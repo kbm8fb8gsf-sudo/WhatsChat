@@ -121,7 +121,7 @@ export const configSchema = z
                 /** SillyTavern's address as seen from this machine. Blank = work it out at startup. */
                 url: z.union([z.literal(''), z.url({ protocol: /^https?$/ })]).default(''),
                 /** Reload the hidden page before a reply if it has been idle this long, to pick up changes. */
-                idleReloadMs: z.number().int().min(0).max(24 * 3_600_000).default(60_000),
+                idleReloadMs: z.number().int().min(0).max(24 * 3_600_000).default(5 * 60_000),
             })
             .prefault({}),
         whatsapp: z

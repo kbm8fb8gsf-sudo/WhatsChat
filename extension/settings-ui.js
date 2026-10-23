@@ -7,6 +7,7 @@
 import {
     checkContacts,
     contactToForm,
+    describeBackground,
     describeStatus,
     emptyContact,
     formToContact,
@@ -70,6 +71,9 @@ export class SettingsPanel {
         this.el('[data-role="status-text"]').textContent = text;
         this.el('[data-role="status-dot"]').dataset['tone'] = tone;
         this.input('[data-role="enabled"]').checked = status.enabled;
+        const background = describeBackground(status.background);
+        this.el('[data-role="background-text"]').textContent = background.text;
+        this.el('[data-role="background-dot"]').dataset['tone'] = background.tone;
 
         const pairing = status.transport.state === 'pairing' ? (status.transport.pairingCode ?? null) : null;
         const qrBox = this.el('[data-role="qr"]');
@@ -89,6 +93,14 @@ export class SettingsPanel {
         } catch (error) {
             console.warn('[WhatsChat] Could not load the QR code', error);
         }
+    }
+
+    /** @param {{ username: string, passwordSet: boolean }} login */
+    showLogin(login) {
+        this.input('[data-role="login-username"]').value = login.username;
+        const password = this.input('[data-role="login-password"]');
+        password.value = '';
+        password.placeholder = login.passwordSet ? 'Saved (type to change)' : '';
     }
 
     /**
@@ -116,6 +128,9 @@ export class SettingsPanel {
         this.input('[data-setting="mediaPlaceholders"]').checked = config['inbound']['mediaPlaceholders'];
         this.input('[data-setting="markOnlineOnConnect"]').checked = config['whatsapp']['markOnlineOnConnect'];
         this.input('[data-setting="quietSeconds"]').value = String(config['inbound']['quietMs'] / 1000);
+        this.input('[data-setting="backgroundEnabled"]').checked = config['background']['enabled'];
+        this.input('[data-setting="backgroundExecutablePath"]').value = config['background']['executablePath'];
+        this.input('[data-setting="backgroundUrl"]').value = config['background']['url'];
 
         const list = this.el('[data-role="contacts"]');
         list.replaceChildren();
@@ -261,6 +276,12 @@ export class SettingsPanel {
             ...config['whatsapp'],
             markOnlineOnConnect: this.input('[data-setting="markOnlineOnConnect"]').checked,
         };
+        config['background'] = {
+            ...config['background'],
+            enabled: this.input('[data-setting="backgroundEnabled"]').checked,
+            executablePath: this.input('[data-setting="backgroundExecutablePath"]').value.trim(),
+            url: this.input('[data-setting="backgroundUrl"]').value.trim(),
+        };
 
         try {
             const saved = await this.api.saveConfig(config);
@@ -279,7 +300,11 @@ export class SettingsPanel {
     bindEvents() {
         const root = /** @type {HTMLElement} */ (this.root);
         root.addEventListener('input', (event) => {
-            if (/** @type {HTMLElement} */ (event.target).closest('.inline-drawer-content') && !isEnabledToggle(event.target)) {
+            if (
+                /** @type {HTMLElement} */ (event.target).closest('.inline-drawer-content') &&
+                !isEnabledToggle(event.target) &&
+                !isLoginField(event.target)
+            ) {
                 this.setDirty(true);
             }
         });
@@ -298,6 +323,12 @@ export class SettingsPanel {
             this.setDirty(true);
         });
         this.on('save', () => this.save());
+        this.on('save-login', async () => {
+            const username = this.input('[data-role="login-username"]').value;
+            const password = this.input('[data-role="login-password"]').value;
+            this.showLogin(await this.api.saveLogin(username, password || undefined));
+            this.bridge.notify(username.trim() ? 'Login saved' : 'Login removed', 'success');
+        });
     }
 
     /**
@@ -380,6 +411,11 @@ function fillOptions(select, options) {
             return option;
         }),
     );
+}
+
+/** @param {EventTarget | null} target */
+function isLoginField(target) {
+    return target instanceof HTMLElement && (target.dataset['role'] ?? '').startsWith('login-');
 }
 
 /** @param {EventTarget | null} target */

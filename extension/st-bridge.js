@@ -41,7 +41,22 @@ const SYSTEM_ROLE = 0;
  * @property {(message: string, level?: NoticeLevel) => void} notify
  * @property {(callback: () => void) => void} onReady Run once SillyTavern has finished loading
  *   (characters included). Runs straight away if it already has.
+ * @property {(chat: { characterAvatar: string, chatFile: string }) => Promise<boolean>} reloadChatIfOpen
+ *   Reload the chat from disk if it's the one on screen (another copy of SillyTavern wrote to it).
+ * @property {(callback: () => void) => void} onSillyTavernChange Called when settings, a character
+ *   or a lorebook are saved in this tab.
+ * @property {() => Promise<void>} reloadOpenChat Re-read the open chat from disk, so changes made
+ *   in another tab aren't overwritten.
  */
+
+/** SillyTavern events that mean the hidden background copy's data is out of date. */
+const CHANGE_EVENTS = [
+    ['SETTINGS_UPDATED', 'settings_updated'],
+    ['CHARACTER_EDITED', 'character_edited'],
+    ['CHARACTER_DELETED', 'characterDeleted'],
+    ['WORLDINFO_UPDATED', 'worldinfo_updated'],
+    ['PRESET_CHANGED', 'preset_changed'],
+];
 
 /**
  * @param {{
@@ -128,6 +143,22 @@ export function createBridge(deps = {}) {
         }
     }
 
+    /**
+     * Opening or creating a chat makes SillyTavern re-save the whole character card from memory.
+     * Re-read the card from disk first, so that save can't undo edits made in another tab since
+     * this page loaded. The chat currently loaded is kept, so no save can land in the wrong file.
+     * @param {number} index
+     */
+    async function refreshCharacter(index) {
+        const ctx = getContext();
+        const before = ctx.characters[index];
+        if (!before || typeof ctx.getOneCharacter !== 'function') return;
+        const loadedChat = before.chat;
+        await ctx.getOneCharacter(before.avatar);
+        const after = getContext().characters[index];
+        if (after && loadedChat !== undefined) after.chat = loadedChat;
+    }
+
     return {
         requestHeaders: () => getContext().getRequestHeaders(),
 
@@ -143,25 +174,28 @@ export function createBridge(deps = {}) {
             const index = characterIndex(target.characterAvatar);
             const character = getContext().characters[index];
             if (index < 0 || !character) throw new Error(`Character "${target.characterAvatar}" was not found`);
-            const characterName = character.name;
+            // Read after any refresh, so name-prefix cleaning uses the current name.
+            const characterName = () => getContext().characters[index]?.name ?? character.name;
             await selectCharacter(index);
 
             if (target.chatFile) {
                 if (getContext().chatId !== target.chatFile) {
                     const chats = await listChats(target.characterAvatar);
                     if (!chats.includes(target.chatFile)) {
-                        throw new Error(`The chat "${target.chatFile}" no longer exists for ${characterName}`);
+                        throw new Error(`The chat "${target.chatFile}" no longer exists for ${characterName()}`);
                     }
+                    await refreshCharacter(index);
                     await getContext().openCharacterChat(target.chatFile);
                 }
-                return { chatFile: target.chatFile, characterName };
+                return { chatFile: target.chatFile, characterName: characterName() };
             }
 
             // No chat mapped yet: start a fresh one for this contact.
+            await refreshCharacter(index);
             await (await script()).doNewChat({ deleteCurrentChat: false });
             const chatFile = getContext().chatId;
             if (!chatFile) throw new Error('Could not create a new chat');
-            return { chatFile, characterName };
+            return { chatFile, characterName: characterName() };
         },
 
         async addUserMessage(text) {
@@ -214,6 +248,30 @@ export function createBridge(deps = {}) {
             ctx.eventSource.on(ctx.eventTypes['APP_READY'] ?? 'app_ready', () => {
                 callback();
             });
+        },
+
+        async reloadChatIfOpen(chat) {
+            const active = getActiveChat();
+            if (active?.kind !== 'character' || active.characterAvatar !== chat.characterAvatar) return false;
+            if (active.chatFile !== chat.chatFile) return false;
+            await waitUntilIdle(60_000);
+            if (!sameChat(getActiveChat(), active)) return false;
+            await getContext().reloadCurrentChat();
+            return true;
+        },
+
+        async reloadOpenChat() {
+            await waitUntilIdle();
+            await getContext().reloadCurrentChat();
+        },
+
+        onSillyTavernChange(callback) {
+            const ctx = getContext();
+            for (const [key, fallback] of CHANGE_EVENTS) {
+                ctx.eventSource.on(ctx.eventTypes[key] ?? fallback, () => {
+                    callback();
+                });
+            }
         },
 
         notify(message, level = 'info') {

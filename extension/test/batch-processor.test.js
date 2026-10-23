@@ -93,7 +93,7 @@ describe('BatchProcessor', () => {
         const p = processor(api, bridge);
         p.offer(batch());
         await p.whenIdle();
-        expect(api.fail).toHaveBeenCalledWith('batch-1', 'No API connected');
+        expect(api.fail).toHaveBeenCalledWith('batch-1', 'No API connected', 'Seraphina - WhatsApp');
         expect(bridge.clearNote).toHaveBeenCalled();
         expect(log.at(-1)).toBe('restoreChat Other - chat');
         expect(bridge.notify).toHaveBeenCalledWith("Couldn't reply to Alice: No API connected", 'error');
@@ -130,6 +130,42 @@ describe('BatchProcessor', () => {
         await p.whenIdle();
         expect(api.claim.mock.calls.map((/** @type {unknown[]} */ c) => c[0])).toEqual(['a', 'b']);
         expect(log.filter((l) => l.startsWith('generateReply')).length).toBe(2);
+    });
+
+    it('reports a failure before any chat was opened without a chat', async () => {
+        const api = fakeApi();
+        const { bridge } = fakeBridge({ openChat: vi.fn(() => Promise.reject(new Error('Character gone'))) });
+        const p = processor(api, bridge);
+        p.offer(batch());
+        await p.whenIdle();
+        expect(api.fail).toHaveBeenCalledWith('batch-1', 'Character gone', undefined);
+    });
+
+    it('can re-read the chat from disk before writing, and lets a hook skip a batch', async () => {
+        const api = fakeApi();
+        const { bridge, log } = fakeBridge();
+        const afterBatch = vi.fn();
+        let allow = false;
+        const p = new BatchProcessor({
+            api: /** @type {any} */ (api),
+            bridge,
+            settings: () => ({ restorePreviousChat: false }),
+            rereadChat: true,
+            beforeClaim: () => allow,
+            afterBatch,
+            setIntervalImpl: () => 0,
+            clearIntervalImpl: () => undefined,
+        });
+        p.offer(batch({ id: 'skipped' }));
+        await p.whenIdle();
+        expect(api.claim).not.toHaveBeenCalled();
+        expect(afterBatch).not.toHaveBeenCalled();
+
+        allow = true;
+        p.offer(batch({ id: 'handled' }));
+        await p.whenIdle();
+        expect(log.slice(0, 3)).toEqual(['waitUntilIdle', 'openChat Seraphina.png Seraphina - WhatsApp', 'reloadOpenChat']);
+        expect(afterBatch).toHaveBeenCalledOnce();
     });
 
     it('renews its claim while working and stops afterwards', async () => {

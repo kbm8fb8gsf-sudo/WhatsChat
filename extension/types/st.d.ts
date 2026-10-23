@@ -52,6 +52,9 @@ declare global {
         openCharacterChat(fileName: string): Promise<void>;
         openGroupChat(groupId: string, chatId?: string): Promise<void>;
         saveChat(): Promise<void>;
+        /** Re-read one character card from disk into `characters`. */
+        getOneCharacter(avatar: string): Promise<void>;
+        reloadCurrentChat(): Promise<void>;
         extensionSettings: Record<string, unknown>;
     }
 

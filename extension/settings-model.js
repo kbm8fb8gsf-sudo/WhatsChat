@@ -4,7 +4,10 @@
  * config and the form. No DOM, no SillyTavern.
  */
 
-/** @typedef {import('./api-client.js').BridgeStatus} BridgeStatus */
+/**
+ * @typedef {import('./api-client.js').BridgeStatus} BridgeStatus
+ * @typedef {import('./api-client.js').BackgroundStatus} BackgroundStatus
+ */
 
 export const PRESETS = /** @type {const} */ ([
     { value: 'off', label: 'Off: replies arrive instantly, in one message' },
@@ -51,6 +54,26 @@ export function describeStatus(status) {
             return { text: t.error ?? 'Something went wrong', tone: 'error' };
         case 'disabled':
             return { text: status.enabled ? 'Starting\u2026' : 'Off', tone: 'off' };
+    }
+}
+
+/**
+ * @param {BackgroundStatus | undefined} background
+ * @returns {{ text: string, tone: 'ok' | 'busy' | 'off' | 'error' }}
+ */
+export function describeBackground(background) {
+    if (!background?.enabled) return { text: 'Off: replies need a SillyTavern tab open', tone: 'off' };
+    switch (background.state) {
+        case 'running':
+            return { text: 'Running: replies no longer need a tab open', tone: 'ok' };
+        case 'starting':
+            return { text: 'Starting the hidden copy of SillyTavern\u2026', tone: 'busy' };
+        case 'waiting':
+            return { text: 'Waiting for SillyTavern to finish starting\u2026', tone: 'busy' };
+        case 'error':
+            return { text: `Problem: ${background.error ?? 'unknown error'} (open tabs reply meanwhile)`, tone: 'error' };
+        case 'off':
+            return { text: 'Off', tone: 'off' };
     }
 }
 

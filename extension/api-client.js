@@ -30,12 +30,23 @@ export const API_BASE = '/api/plugins/whatschat';
  */
 
 /**
+ * @typedef {object} BackgroundStatus
+ * @property {boolean} enabled
+ * @property {'off' | 'waiting' | 'starting' | 'running' | 'error'} state
+ * @property {string} [error]
+ * @property {string} [browserVersion]
+ * @property {string} [url]
+ * @property {number} [nextRetryAt]
+ */
+
+/**
  * @typedef {object} BridgeStatus
  * @property {boolean} enabled
  * @property {string} transportKind
  * @property {TransportStatus} transport
  * @property {number} pendingBatches
  * @property {number} queuedTasks
+ * @property {BackgroundStatus} [background]
  */
 
 /**
@@ -44,6 +55,8 @@ export const API_BASE = '/api/plugins/whatschat';
  * @property {(batch: BatchView) => void} [batch]
  * @property {(dropped: { batchId: string, contactId: string, reason: string }) => void} [batchDropped]
  * @property {(config: any) => void} [config]
+ * @property {(chat: { characterAvatar: string, chatFile: string }) => void} [chatUpdated]
+ * @property {(stale: { at: number }) => void} [stale]
  * @property {(state: 'open' | 'reconnecting') => void} [connection]
  */
 
@@ -77,6 +90,7 @@ export class ApiClient {
      *   fetchImpl?: typeof fetch,
      *   createEventSource?: (url: string) => EventSourceLike,
      *   clientId?: string,
+     *   role?: 'tab' | 'worker',
      *   base?: string,
      *   setTimeoutImpl?: (callback: () => void, ms: number) => unknown,
      * }} options
@@ -87,6 +101,8 @@ export class ApiClient {
         this.createEventSource = options.createEventSource ?? ((url) => new EventSource(url));
         /** This tab's id. It survives stream reconnects, so a brief drop doesn't lose a claim. */
         this.clientId = options.clientId ?? crypto.randomUUID();
+        /** "worker" when this is the hidden background copy of SillyTavern. */
+        this.role = options.role ?? 'tab';
         this.base = options.base ?? API_BASE;
         this.setTimeoutImpl = options.setTimeoutImpl ?? ((callback, ms) => setTimeout(callback, ms));
     }
@@ -171,14 +187,38 @@ export class ApiClient {
     /**
      * @param {string} batchId
      * @param {string} reason
+     * @param {string} [chatFile] The chat the user message was added to, if it got that far.
      */
-    fail(batchId, reason) {
+    fail(batchId, reason, chatFile) {
         return this.request(
             'POST',
             `/batches/${encodeURIComponent(batchId)}/fail`,
-            { clientId: this.clientId, reason: reason.slice(0, 2_000) },
+            { clientId: this.clientId, reason: reason.slice(0, 2_000), ...(chatFile ? { chatFile } : {}) },
             [409],
         );
+    }
+
+    /** Tell the hidden background copy that SillyTavern's data changed, so it reloads. */
+    markStale() {
+        return this.request('POST', '/background/stale');
+    }
+
+    /** @returns {Promise<{ username: string, passwordSet: boolean }>} */
+    getLogin() {
+        return this.request('GET', '/background/login');
+    }
+
+    /**
+     * @param {string} username
+     * @param {string} [password] Leave out to keep the saved password.
+     * @returns {Promise<{ username: string, passwordSet: boolean }>}
+     */
+    saveLogin(username, password) {
+        return this.request('PUT', '/background/login', { username, ...(password ? { password } : {}) });
+    }
+
+    restartBackground() {
+        return this.request('POST', '/background/restart');
     }
 
     /**
@@ -192,7 +232,8 @@ export class ApiClient {
         /** @type {EventSourceLike | null} */
         let source = null;
         let retryMs = 2_000;
-        const url = `${this.base}/events?clientId=${encodeURIComponent(this.clientId)}`;
+        const role = this.role === 'worker' ? '&role=worker' : '';
+        const url = `${this.base}/events?clientId=${encodeURIComponent(this.clientId)}${role}`;
 
         /** @param {string} type @param {(data: any) => void} [handler] */
         const on = (type, handler) => {
@@ -226,6 +267,8 @@ export class ApiClient {
             on('batch', handlers.batch);
             on('batch-dropped', handlers.batchDropped);
             on('config', handlers.config);
+            on('chat-updated', handlers.chatUpdated);
+            on('stale', handlers.stale);
         };
 
         open();

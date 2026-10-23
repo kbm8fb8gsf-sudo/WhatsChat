@@ -48,6 +48,12 @@ export function fakeBridge(overrides = {}) {
         onReady: (callback) => {
             callback();
         },
+        reloadChatIfOpen: vi.fn(() => Promise.resolve(true)),
+        reloadOpenChat: vi.fn(() => {
+            log.push('reloadOpenChat');
+            return Promise.resolve();
+        }),
+        onSillyTavernChange: vi.fn(),
         ...overrides,
     };
     return { bridge, log };

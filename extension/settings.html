@@ -46,6 +46,41 @@
             </details>
 
             <hr>
+            <h4>Background replies</h4>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="backgroundEnabled">
+                <span>Reply even when no SillyTavern tab is open (runs a hidden copy of SillyTavern on the server)</span>
+            </label>
+            <div class="whatschat-status">
+                <span class="whatschat-dot" data-role="background-dot"></span>
+                <span data-role="background-text">Off</span>
+            </div>
+            <small>Needs Chromium installed on the server, once. The README explains how.</small>
+            <details>
+                <summary>SillyTavern login and advanced options</summary>
+                <small>Only needed if SillyTavern asks for a username and password.</small>
+                <label>
+                    <span>Username</span>
+                    <input class="text_pole" data-role="login-username" autocomplete="off">
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input class="text_pole" type="password" data-role="login-password" autocomplete="new-password">
+                </label>
+                <div class="flex-container">
+                    <div class="menu_button" data-action="save-login">Save login</div>
+                </div>
+                <label>
+                    <span>Chrome or Chromium to use (leave blank for the one installed for WhatsChat)</span>
+                    <input class="text_pole" data-setting="backgroundExecutablePath" placeholder="/usr/bin/chromium">
+                </label>
+                <label>
+                    <span>SillyTavern's address on the server (leave blank to detect it)</span>
+                    <input class="text_pole" data-setting="backgroundUrl" placeholder="http://127.0.0.1:8000/">
+                </label>
+            </details>
+
+            <hr>
             <h4>Options</h4>
             <label class="checkbox_label">
                 <input type="checkbox" data-setting="restorePreviousChat">

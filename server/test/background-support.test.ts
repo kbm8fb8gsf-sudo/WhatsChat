@@ -25,7 +25,7 @@ describe('localServerUrl', () => {
 });
 
 describe('isLoginPage', () => {
-    it('recognises SillyTavern’s login page', () => {
+    it('recognises SillyTavern\u2019s login page', () => {
         expect(isLoginPage('http://127.0.0.1:8000/login')).toBe(true);
         expect(isLoginPage('http://127.0.0.1:8000/login/')).toBe(true);
         expect(isLoginPage('http://127.0.0.1:8000/')).toBe(false);

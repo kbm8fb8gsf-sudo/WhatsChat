@@ -16,6 +16,7 @@ const CONFIG = {
     dispatch: { leaseMs: 120000, maxAgeMs: 43200000 },
     sillytavern: { restorePreviousChat: true },
     whatsapp: { markOnlineOnConnect: false },
+    background: { enabled: false, executablePath: '', url: '', idleReloadMs: 300000 },
 };
 
 /** @type {SettingsPanel} */
@@ -32,6 +33,7 @@ beforeEach(async () => {
     api = {
         qr: vi.fn(() => Promise.resolve({ qr: 'data:image/png;base64,AAAA' })),
         saveConfig: vi.fn((/** @type {any} */ config) => Promise.resolve(config)),
+        saveLogin: vi.fn((/** @type {string} */ username) => Promise.resolve({ username, passwordSet: true })),
         connect: vi.fn(() => Promise.resolve({})),
         disconnect: vi.fn(() => Promise.resolve({})),
         logout: vi.fn(() => Promise.resolve({})),
@@ -135,6 +137,52 @@ describe('SettingsPanel', () => {
         toggle.checked = true;
         toggle.dispatchEvent(new Event('change', { bubbles: true }));
         expect(api.connect).toHaveBeenCalledOnce();
+    });
+
+    it('saves background settings with the rest of the form', async () => {
+        $('[data-setting="backgroundEnabled"]').checked = true;
+        type($('[data-setting="backgroundUrl"]'), ' http://127.0.0.1:8000/ ');
+        $('[data-action="save"]').click();
+        await flush();
+        expect(api.saveConfig.mock.calls[0][0].background).toEqual({
+            enabled: true,
+            executablePath: '',
+            url: 'http://127.0.0.1:8000/',
+            idleReloadMs: 300000,
+        });
+    });
+
+    it('shows background state in plain words', async () => {
+        /** @returns {import('../api-client.js').BridgeStatus} */
+        const status = (/** @type {any} */ background) => ({
+            enabled: true,
+            transportKind: 'whatsapp',
+            transport: { state: 'connected' },
+            pendingBatches: 0,
+            queuedTasks: 0,
+            background,
+        });
+        await panel.showStatus(status({ enabled: true, state: 'running' }));
+        expect($('[data-role="background-text"]').textContent).toBe('Running: replies no longer need a tab open');
+        expect($('[data-role="background-dot"]').dataset['tone']).toBe('ok');
+        await panel.showStatus(status({ enabled: true, state: 'error', error: 'Chromium is not installed.' }));
+        expect($('[data-role="background-text"]').textContent).toContain('Chromium is not installed.');
+        expect($('[data-role="background-dot"]').dataset['tone']).toBe('error');
+    });
+
+    it('saves the login separately and never shows the saved password', async () => {
+        panel.showLogin({ username: 'lewis', passwordSet: true });
+        expect($('[data-role="login-username"]').value).toBe('lewis');
+        expect($('[data-role="login-password"]').value).toBe('');
+        expect($('[data-role="login-password"]').placeholder).toBe('Saved (type to change)');
+
+        type($('[data-role="login-password"]'), 'new-secret');
+        $('[data-action="save-login"]').click();
+        await flush();
+        expect(api.saveLogin).toHaveBeenCalledWith('lewis', 'new-secret');
+        expect($('[data-role="login-password"]').value).toBe('');
+        // Typing a login doesn't mark the settings form unsaved.
+        expect($('[data-action="save"]').classList.contains('whatschat-unsaved')).toBe(false);
     });
 
     it('asks before logging out', async () => {

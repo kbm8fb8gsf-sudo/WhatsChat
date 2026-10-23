@@ -62,6 +62,14 @@ function fakeSillyTavern() {
         setExtensionPrompt: vi.fn((key, value, position, depth, _scan, role, filter) => {
             state.prompts[key] = { value, position, depth, role, filter };
         }),
+        /** Simulates another tab having edited the card (and switched it to another chat) on disk. */
+        getOneCharacter: vi.fn((/** @type {string} */ avatar) => {
+            const index = state.characters.findIndex((c) => c.avatar === avatar);
+            const current = state.characters[index];
+            if (current) state.characters[index] = { ...current, name: `${current.name} (edited)`, chat: 'chat chosen in another tab' };
+            return Promise.resolve();
+        }),
+        reloadCurrentChat: vi.fn(() => Promise.resolve()),
         generate: vi.fn(() => {
             if (state.replyOnGenerate) state.chat.push({ name: 'Seraphina', is_user: false, is_system: false, mes: 'hello there' });
             return Promise.resolve();
@@ -126,9 +134,27 @@ describe('st-bridge', () => {
         const st = fakeSillyTavern();
         st.state.characterId = '1';
         const opened = await st.bridge.openChat({ characterAvatar: 'Seraphina.png', chatFile: 'Seraphina - WhatsApp' });
-        expect(opened).toEqual({ chatFile: 'Seraphina - WhatsApp', characterName: 'Seraphina' });
+        // The fake re-reads an edited card from disk, so the current name comes back.
+        expect(opened).toEqual({ chatFile: 'Seraphina - WhatsApp', characterName: 'Seraphina (edited)' });
         expect(st.ctx.selectCharacterById).toHaveBeenCalledWith(0, { switchMenu: false });
         expect(st.ctx.openCharacterChat).toHaveBeenCalledWith('Seraphina - WhatsApp');
+    });
+
+    it('re-reads the character card before a switch makes SillyTavern re-save it, keeping the loaded chat', async () => {
+        const st = fakeSillyTavern();
+        const chatDuringOpen = /** @type {string[]} */ ([]);
+        st.ctx.openCharacterChat.mockImplementation((/** @type {string} */ file) => {
+            chatDuringOpen.push(String(st.state.characters[0]?.chat));
+            const character = st.state.characters[0];
+            if (character) character.chat = file;
+            return Promise.resolve();
+        });
+        await st.bridge.openChat({ characterAvatar: 'Seraphina.png', chatFile: 'Seraphina - WhatsApp' });
+        expect(st.ctx.getOneCharacter).toHaveBeenCalledWith('Seraphina.png');
+        // The fresh card from disk is used...
+        expect(st.state.characters[0]?.name).toBe('Seraphina (edited)');
+        // ...but the chat in memory never pointed at a file other than the one loaded.
+        expect(chatDuringOpen).toEqual(['Seraphina - old']);
     });
 
     it('does nothing when the mapped chat is already open', async () => {
@@ -142,7 +168,7 @@ describe('st-bridge', () => {
         const st = fakeSillyTavern();
         const opened = await st.bridge.openChat({ characterAvatar: 'Seraphina.png', chatFile: null });
         expect(st.script.doNewChat).toHaveBeenCalledWith({ deleteCurrentChat: false });
-        expect(opened).toEqual({ chatFile: 'Seraphina - new', characterName: 'Seraphina' });
+        expect(opened).toEqual({ chatFile: 'Seraphina (edited) - new', characterName: 'Seraphina (edited)' });
     });
 
     it('refuses missing characters, missing chats and switches that did not happen', async () => {
@@ -231,6 +257,33 @@ describe('st-bridge', () => {
         const listener = /** @type {() => void} */ (st.ctx.eventSource.on.mock.calls[0]?.[1]);
         listener();
         expect(ready).toHaveBeenCalledOnce();
+    });
+
+    it('reloads the chat on screen only if it is the one that was written to', async () => {
+        const st = fakeSillyTavern();
+        expect(await st.bridge.reloadChatIfOpen({ characterAvatar: 'Seraphina.png', chatFile: 'Other' })).toBe(false);
+        expect(await st.bridge.reloadChatIfOpen({ characterAvatar: 'Sensei.png', chatFile: 'Seraphina - old' })).toBe(false);
+        expect(st.ctx.reloadCurrentChat).not.toHaveBeenCalled();
+        expect(await st.bridge.reloadChatIfOpen({ characterAvatar: 'Seraphina.png', chatFile: 'Seraphina - old' })).toBe(true);
+        expect(st.ctx.reloadCurrentChat).toHaveBeenCalledOnce();
+    });
+
+    it('re-reads the open chat from disk on request', async () => {
+        const st = fakeSillyTavern();
+        await st.bridge.reloadOpenChat();
+        expect(st.ctx.reloadCurrentChat).toHaveBeenCalledOnce();
+    });
+
+    it('reports saved settings, characters and lorebooks', () => {
+        const st = fakeSillyTavern();
+        st.ctx.eventTypes = { SETTINGS_UPDATED: 'settings_updated', CHARACTER_EDITED: 'character_edited' };
+        const changed = vi.fn();
+        st.bridge.onSillyTavernChange(changed);
+        const events = st.ctx.eventSource.on.mock.calls.map((call) => call[0]);
+        expect(events).toEqual(['settings_updated', 'character_edited', 'characterDeleted', 'worldinfo_updated', 'preset_changed']);
+        const listener = /** @type {() => void} */ (st.ctx.eventSource.on.mock.calls[0]?.[1]);
+        listener();
+        expect(changed).toHaveBeenCalledOnce();
     });
 
     it('restores the previous character chat or group chat', async () => {
