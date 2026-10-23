@@ -120,6 +120,6 @@ Typing time per bubble is clamped to 1.5–25 s with ±20 % jitter. The default 
 ## 6. Decisions I need from you
 1. **The presets section was truncated.** Please send the intended presets and any other realistic-mode rules, such as quiet hours or "seen but no reply".
 2. Is it OK to use **`/script.js` imports in `st-bridge.js`** for `sendMessageAsUser`, `doNewChat` and the busy flags (gap 1/2 above)? The alternative is building the message manually.
-3. Is it OK to pin **Baileys 7.0.0-rc14** (a release candidate, but it's npm `latest` and the actively developed line)? The alternative is 6.7.24 `legacy`.
-4. Should **group chats** in SillyTavern be mappable? My proposal: single characters only in v1, because groups can produce several replies per turn.
+3. ✅ **Decided:** pin `baileys@7.0.0-rc14`.
+4. ✅ **Decided:** single characters only in v1. SillyTavern group chats can't be mapped.
 5. SillyTavern expands `{{macros}}` in user messages, so an approved contact could type them. My proposal: neutralise `{{` in inbound text by default.
