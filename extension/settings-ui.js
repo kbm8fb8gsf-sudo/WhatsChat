@@ -74,6 +74,7 @@ export class SettingsPanel {
         const background = describeBackground(status.background);
         this.el('[data-role="background-text"]').textContent = background.text;
         this.el('[data-role="background-dot"]').dataset['tone'] = background.tone;
+        this.el('[data-action="restart-background"]').hidden = status.background?.state !== 'error';
 
         const pairing = status.transport.state === 'pairing' ? (status.transport.pairingCode ?? null) : null;
         const qrBox = this.el('[data-role="qr"]');
@@ -323,6 +324,9 @@ export class SettingsPanel {
             this.setDirty(true);
         });
         this.on('save', () => this.save());
+        this.on('restart-background', async () => {
+            await this.api.restartBackground();
+        });
         this.on('save-login', async () => {
             const username = this.input('[data-role="login-username"]').value;
             const password = this.input('[data-role="login-password"]').value;

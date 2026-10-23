@@ -38,8 +38,19 @@ export interface BackgroundBrowserOptions {
 
 const DEFAULT_BACKOFF: BackoffOptions = { baseMs: 5_000, factor: 2, maxMs: 5 * 60_000, jitter: 0.1 };
 
-/** A problem with a message that's already written for the person reading the panel. */
-class BackgroundProblem extends Error {}
+/**
+ * A problem with a message that's already written for the person reading the panel.
+ * `retry: false` means retrying can't help until the settings or login change; for logins it
+ * would also count against SillyTavern's failed-login limit for this machine.
+ */
+class BackgroundProblem extends Error {
+    constructor(
+        message: string,
+        readonly retry = true,
+    ) {
+        super(message);
+    }
+}
 
 /**
  * Keeps a hidden SillyTavern page running so WhatsApp replies don't need a browser tab open.
@@ -142,7 +153,7 @@ export class BackgroundBrowser {
                 await session.close();
                 return;
             }
-            await session.open(url);
+            checkResponse(await session.open(url), login);
             if (isLoginPage(session.currentUrl())) await this.logIn(session, url, login);
             try {
                 await session.waitForWorker(this.readyTimeoutMs);
@@ -177,24 +188,29 @@ export class BackgroundBrowser {
         if (!login) {
             throw new BackgroundProblem(
                 'SillyTavern asks for a login. Enter its username and password under Background replies.',
+                false,
             );
         }
         const result = await session.login(login.username, login.password);
-        if (!result.ok) throw new BackgroundProblem(`SillyTavern didn't accept the login: ${result.error}`);
-        await session.open(url);
+        if (!result.ok) throw new BackgroundProblem(`SillyTavern didn't accept the login: ${result.error}`, false);
+        checkResponse(await session.open(url), login);
         if (isLoginPage(session.currentUrl())) {
             throw new BackgroundProblem('SillyTavern still shows its login page after logging in.');
         }
     }
 
     private failed(error: unknown): void {
-        this.attempt++;
-        const delay = backoffDelay(this.attempt, this.backoff, this.rng);
-        const message = describeProblem(error, this.url());
+        const message = describeProblem(error, this.url(), this.options.settings().executablePath.trim());
         if (message !== this.lastLoggedError) {
             this.options.logger.warn(`Background replies: ${message}`);
             this.lastLoggedError = message;
         }
+        if (error instanceof BackgroundProblem && !error.retry) {
+            this.setState('error', message);
+            return;
+        }
+        this.attempt++;
+        const delay = backoffDelay(this.attempt, this.backoff, this.rng);
         this.retryTimer = this.options.scheduler.setTimeout(() => {
             this.retryTimer = null;
             void this.launch();
@@ -232,14 +248,34 @@ export class BackgroundBrowser {
     }
 }
 
+/** SillyTavern answers 401 when basic auth is on, and 403 when its whitelist refuses us. */
+function checkResponse(status: number | null, login: Login | null): void {
+    if (status === 401) {
+        throw new BackgroundProblem(
+            login
+                ? "SillyTavern didn't accept the saved username and password."
+                : 'SillyTavern asks for a username and password. Enter them under Background replies.',
+            false,
+        );
+    }
+    if (status === 403) {
+        throw new BackgroundProblem(
+            "SillyTavern refused the connection from this machine. Check config.yaml's whitelist allows 127.0.0.1.",
+        );
+    }
+}
+
 /** Turn launch failures into instructions a person can follow on an Ubuntu server. */
-export function describeProblem(error: unknown, url: string | null): string {
+export function describeProblem(error: unknown, url: string | null, executablePath = ''): string {
     if (error instanceof BackgroundProblem) return error.message;
     const text = error instanceof Error ? error.message : String(error);
     if (/Cannot find (?:module|package) 'playwright-core'/.test(text)) {
         return 'playwright-core is missing. Run "npm ci" in the plugins/whatschat folder.';
     }
     if (/Executable doesn't exist|Failed to launch.*ENOENT|spawn .* ENOENT/i.test(text)) {
+        if (executablePath) {
+            return `No Chrome or Chromium at ${executablePath}. Fix the path, or leave it blank to use the one installed for WhatsChat.`;
+        }
         return (
             'Chromium is not installed. In the plugins/whatschat folder, as the user that runs ' +
             'SillyTavern, run "npm run browser:install".'

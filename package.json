@@ -14,7 +14,9 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p extension/jsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "browser:install": "playwright-core install --only-shell chromium",
+    "browser:deps": "playwright-core install-deps chromium"
   },
   "dependencies": {
     "baileys": "7.0.0-rc14",

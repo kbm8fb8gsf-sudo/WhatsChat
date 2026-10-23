@@ -138,3 +138,25 @@ What changed from the plan while building, and how it was checked.
   - With a stand-in transport and a mock OpenAI-compatible model, the full loop worked: two quick messages became one user message; they were marked read, "typing…" was shown, and the reply went out as two cleaned bubbles; a new chat was created and saved to the contact; the previous chat was restored; the note reached the model as a system message; a contact's `{{user}}` was not expanded; and streamed replies were captured in full.
   - The smoke test found two UI bugs: the QR box showed while connected, and the panel filled in before characters had loaded. Both are fixed.
 - **Not verified here:** pairing and messaging against WhatsApp's real servers, which aren't reachable from the build container. See `docs/manual-test.md`.
+
+## 8. Background replies (added after v1)
+
+Requested so replies work with no browser tab open, on an Ubuntu server.
+
+- **Design:** the server plugin runs a hidden SillyTavern page in headless Chromium (Playwright's `chromium-headless-shell`). The extension detects it from a flag set before the page loads and runs in worker mode. Replies therefore still go through SillyTavern's own prompt building, with no reimplementation.
+- **Routing:** event-stream clients have a role. While background mode is starting or running, batches go only to the hidden page and tabs can't claim them. If it fails, the waiting batch is re-offered to tabs.
+- **Stale data:** SillyTavern keeps settings, characters and chats in page memory and saves them whole, so a long-lived hidden copy could overwrite your edits. It is guarded four ways:
+  - The hidden page's `/api/settings/save` requests are intercepted (and reported as successful).
+  - The character card is re-read from disk before opening or creating a chat, because SillyTavern re-saves the card then.
+  - The chat is re-read from disk before writing to it.
+  - The page reloads before a batch when a tab reports a change (settings, character, lorebook or preset saved), or after 5 idle minutes.
+- **Tabs:** they reload a chat on screen when the hidden page wrote to it (`chat-updated` event).
+- **Logins:** SillyTavern's address comes from `process.serverEvents` `server-started` (switched to loopback), with a manual override. Basic auth uses HTTP credentials; user accounts log in through `/api/users/login` from the page. A rejected login is not retried, to avoid SillyTavern's failed-login limit.
+- **Verified on Ubuntu 24.04 with real SillyTavern 1.19** (headless shell 141, playwright-core 1.64), with no tab open:
+  - Replies arrived within about 5 s.
+  - With a tab open, the tab never switched chats, and it refreshed the WhatsApp chat when that chat was on screen.
+  - A settings change triggered a reload before the next reply. `settings.json` was never written by the hidden page.
+  - Basic auth (`listen: true`) and user accounts both worked once the login was saved, with clear messages before.
+  - Shutdown left no Chromium processes.
+  - Memory was about 0.5 GB for the hidden Chromium.
+- **Not verified here:** the browser download itself (`npm run browser:install`), because Playwright's CDN is blocked from the build container. The command and its target were checked with `--dry-run`.

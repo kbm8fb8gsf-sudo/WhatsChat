@@ -11,7 +11,7 @@ It's built for personal use on a spare number. It only ever replies to people on
 - SillyTavern 1.19 or newer, with an AI connection that works for normal chatting.
 - Git and Node.js 20 or newer. SillyTavern already needs both.
 - A phone with WhatsApp on the spare number, to scan a QR code once.
-- A SillyTavern tab left open in a browser. Replies are written in that tab, so messages wait until a tab is open.
+- Either a SillyTavern tab left open in a browser, or **background replies** turned on (see below). Replies are written by SillyTavern's page, so one of the two has to be running.
 
 ## Install
 
@@ -59,6 +59,8 @@ cd SillyTavern/plugins/whatschat && git pull && npm ci && npm run build
 cd SillyTavern/data/default-user/extensions/WhatsChat && git pull   # or use the Extensions menu's update button
 ```
 
+If you use background replies, also run `npm run browser:install` again in `plugins/whatschat`. An update may need a newer browser, and the panel will tell you if it does.
+
 ## Setting up
 
 1. Open **Extensions** (the cubes icon) and expand **WhatsChat**.
@@ -73,6 +75,36 @@ cd SillyTavern/data/default-user/extensions/WhatsChat && git pull   # or use the
 5. Click **Save**.
 
 That's it. When that person messages the spare number, SillyTavern switches to their chat, writes the reply, sends it, and switches back to whatever you were doing.
+
+## Background replies: no tab needed
+
+Normally a SillyTavern tab has to be open somewhere, because SillyTavern's page is what writes the replies. With **background replies** on, WhatsChat runs its own hidden copy of that page on the server in a headless browser, so replies keep working with every tab closed. Your prompts, presets, lorebooks and extensions are used exactly as in a normal tab.
+
+### Setting it up on an Ubuntu server
+
+Install a headless Chrome for WhatsChat. This is a one-time download of about 100 MB:
+
+```sh
+cd SillyTavern/plugins/whatschat
+npm run browser:install                     # as the user that runs SillyTavern
+sudo env "PATH=$PATH" npm run browser:deps  # once: installs the system libraries it needs (apt)
+```
+
+- Run `browser:install` **as the same user that runs SillyTavern**, because the browser is saved in that user's home folder (`~/.cache/ms-playwright`). If SillyTavern runs as a service under its own user, use e.g. `sudo -u sillytavern npm run browser:install`.
+- The `env "PATH=$PATH"` part lets `sudo` find Node when it was installed with nvm.
+- It works on Ubuntu 22.04 and 24.04, on both x86-64 and ARM64 servers.
+
+Then in the WhatsChat panel, tick **Reply even when no SillyTavern tab is open** and click **Save**. Within a few seconds the status shows **Running: replies no longer need a tab open**.
+
+**If SillyTavern asks for a login** (user accounts, or the username and password prompt it uses with `listen: true`), open **SillyTavern login and advanced options**, enter the username and password, and click **Save login**. The password is stored in `data/background-login.json`, readable only by your user, and is never shown again.
+
+### What changes when it's on
+
+- **Your tabs stop switching chats.** The hidden copy does that work, so a tab you're using stays where you left it.
+- **Open chats stay current.** If you have a contact's chat open in a tab, it refreshes itself when a WhatsApp message comes in.
+- **Your changes are picked up.** When you change settings, a character or a lorebook in your tab, the hidden copy reloads before its next reply, which takes a few seconds. It also reloads after 5 quiet minutes, in case something changed elsewhere. It never saves SillyTavern's settings itself, so it can't undo yours.
+- **Memory:** it uses about 0.5 GB of RAM. On a 1 GB server that may be too much.
+- **If something goes wrong**, the panel says what in plain words, and any open tab handles replies in the meantime. **Try again** restarts it once you've fixed the problem.
 
 ## How it behaves
 
@@ -103,6 +135,7 @@ Everything WhatsChat stores is in `plugins/whatschat/data/` (or the folder named
 
 - `config.json` holds your settings and contacts.
 - `auth/` is the WhatsApp session, effectively the key to the account. It's only readable by your user. Don't share it.
+- `background-login.json` holds the SillyTavern login for background replies, if you saved one. It's only readable by your user.
 
 **Log out of WhatsApp** in the panel unlinks this computer from the phone and deletes `auth/`.
 
@@ -117,6 +150,11 @@ Everything WhatsChat stores is in `plugins/whatschat/data/` (or the folder named
 | A contact's messages are ignored | Check the number has the right country code. SillyTavern's console logs `Ignored a message from …: not on the allowlist`. If that shows `lid:12345…` instead of a phone number, WhatsApp hid the number: add a contact with exactly that `lid:…` text as the number. |
 | "Couldn't reply to …" pop-up | SillyTavern couldn't generate. Usually the AI connection is down, or the mapped chat or character was deleted. The message is skipped. |
 | "The reply … wasn't sent (it was empty …)" | After removing narration and formatting, nothing was left. Try the instruction note, or a different style. |
+| Background: "Chromium is not installed" | In `plugins/whatschat`, run `npm run browser:install` as the user that runs SillyTavern, then click **Try again**. |
+| Background: "Chromium is missing system libraries" | Run `sudo env "PATH=$PATH" npm run browser:deps` once in `plugins/whatschat`, then **Try again**. |
+| Background: "SillyTavern asks for a username and password" / "didn't accept the login" | Enter or fix the login under **SillyTavern login and advanced options**. WhatsChat doesn't keep retrying a wrong password, so SillyTavern won't lock this machine out. |
+| Background: "the WhatsChat extension didn't start" | The extension must be installed for the SillyTavern user the hidden copy logs in as. If you installed it for one user only, either install it for that user too, or use "Install for all users". |
+| Background: "Could not open SillyTavern at …" | SillyTavern's address couldn't be worked out, e.g. behind a reverse proxy. Enter it (as seen from the server, e.g. `http://127.0.0.1:8000/`) under advanced options. |
 
 To see more detail in the console, start SillyTavern with `WHATSCHAT_DEBUG=1`.
 

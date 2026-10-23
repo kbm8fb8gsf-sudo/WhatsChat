@@ -23,7 +23,7 @@ const BASE_CONFIG = {
 const fakeLauncher: Launcher = () => {
     const session: BrowserSession = {
         version: 'test',
-        open: () => Promise.resolve(),
+        open: () => Promise.resolve(200),
         currentUrl: () => 'http://127.0.0.1:1/',
         login: () => Promise.resolve({ ok: true }),
         waitForWorker: () => Promise.resolve(),

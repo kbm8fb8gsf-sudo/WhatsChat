@@ -7,7 +7,8 @@ import type { Logger } from '../util/logger.js';
 export interface BrowserSession {
     /** e.g. "156.0.8078.4" */
     readonly version: string;
-    open(url: string): Promise<void>;
+    /** Navigate; resolves with the HTTP status of the page (null if unknown). */
+    open(url: string): Promise<number | null>;
     currentUrl(): string;
     /** Log in through SillyTavern's own login API, from inside the page. */
     login(username: string, password: string): Promise<{ ok: true } | { ok: false; error: string }>;

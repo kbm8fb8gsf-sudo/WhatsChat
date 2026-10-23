@@ -73,7 +73,8 @@ function createSession(browser: Browser, page: Page): BrowserSession {
     return {
         version: browser.version(),
         async open(url) {
-            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+            const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+            return response?.status() ?? null;
         },
         currentUrl: () => page.url(),
         login(username, password) {

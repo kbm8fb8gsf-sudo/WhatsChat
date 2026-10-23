@@ -34,6 +34,7 @@ beforeEach(async () => {
         qr: vi.fn(() => Promise.resolve({ qr: 'data:image/png;base64,AAAA' })),
         saveConfig: vi.fn((/** @type {any} */ config) => Promise.resolve(config)),
         saveLogin: vi.fn((/** @type {string} */ username) => Promise.resolve({ username, passwordSet: true })),
+        restartBackground: vi.fn(() => Promise.resolve({})),
         connect: vi.fn(() => Promise.resolve({})),
         disconnect: vi.fn(() => Promise.resolve({})),
         logout: vi.fn(() => Promise.resolve({})),
@@ -165,9 +166,14 @@ describe('SettingsPanel', () => {
         await panel.showStatus(status({ enabled: true, state: 'running' }));
         expect($('[data-role="background-text"]').textContent).toBe('Running: replies no longer need a tab open');
         expect($('[data-role="background-dot"]').dataset['tone']).toBe('ok');
+        expect($('[data-action="restart-background"]').hidden).toBe(true);
         await panel.showStatus(status({ enabled: true, state: 'error', error: 'Chromium is not installed.' }));
         expect($('[data-role="background-text"]').textContent).toContain('Chromium is not installed.');
         expect($('[data-role="background-dot"]').dataset['tone']).toBe('error');
+        expect($('[data-action="restart-background"]').hidden).toBe(false);
+        $('[data-action="restart-background"]').click();
+        await flush();
+        expect(api.restartBackground).toHaveBeenCalledOnce();
     });
 
     it('saves the login separately and never shows the saved password', async () => {

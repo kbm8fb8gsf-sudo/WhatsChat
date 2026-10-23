@@ -46,6 +46,17 @@ Before starting: SillyTavern is running with a working AI connection, WhatsChat 
 - [ ] Click **Log out of WhatsApp** and confirm. The device disappears from the spare phone's Linked devices, the status says logged out, and `plugins/whatschat/data/auth/` is gone.
 - [ ] Ticking **Connect** again shows a new QR code.
 
+## Background replies (on the Ubuntu server)
+
+- [ ] In `plugins/whatschat`, run `npm run browser:install` as the SillyTavern user, and `sudo env "PATH=$PATH" npm run browser:deps` once.
+- [ ] Tick **Reply even when no SillyTavern tab is open** and Save. Within about 30 seconds it shows "Running".
+- [ ] Close every SillyTavern tab. Send a WhatsApp message: it's read and answered as usual.
+- [ ] Open SillyTavern on a different chat and send a WhatsApp message. Your tab doesn't move.
+- [ ] Open the contact's chat in your tab and send a WhatsApp message. The new messages appear in your tab without you reloading.
+- [ ] Change a setting (e.g. the response length) in your tab, then send a message. The console logs "Reloading to pick up changes before replying", and the reply uses the new setting.
+- [ ] If SillyTavern has a login: before saving it, the panel says SillyTavern asks for one; after **Save login**, it runs.
+- [ ] Stop SillyTavern. `ps aux | grep headless_shell` shows nothing left behind.
+
 ## Shutdown
 
 - [ ] Send a message with the **Busy** style and stop SillyTavern (Ctrl-C) while the reply is waiting to be sent. SillyTavern exits within a few seconds, and the queued messages are sent before it exits.

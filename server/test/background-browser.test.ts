@@ -21,6 +21,7 @@ interface FakeSession extends BrowserSession {
 }
 
 interface Behaviour {
+    status?: number;
     redirectToLogin?: boolean;
     loginResult?: { ok: true } | { ok: false; error: string };
     staysOnLogin?: boolean;
@@ -40,7 +41,7 @@ function fakeSession(behaviour: Behaviour = {}): FakeSession {
             session.opened.push(url);
             const needsLogin = behaviour.redirectToLogin && (!loggedIn || behaviour.staysOnLogin);
             current = needsLogin ? `${url}login` : url;
-            return Promise.resolve();
+            return Promise.resolve(behaviour.status ?? 200);
         },
         currentUrl: () => current,
         login(username, password) {
@@ -168,6 +169,9 @@ describe('BackgroundBrowser', () => {
         [{ redirectToLogin: true, loginResult: { ok: false as const, error: 'Incorrect credentials' } }, { username: 'a', password: 'b' }, "didn't accept the login: Incorrect credentials"],
         [{ redirectToLogin: true, staysOnLogin: true }, { username: 'a', password: 'b' }, 'still shows its login page'],
         [{ workerNeverReady: true }, null, "the WhatsChat extension didn't start"],
+        [{ status: 401 }, null, 'asks for a username and password'],
+        [{ status: 401 }, { username: 'a', password: 'wrong' }, "didn't accept the saved username and password"],
+        [{ status: 403 }, null, 'whitelist allows 127.0.0.1'],
     ])('explains login and startup problems (%#)', async (b, l, message) => {
         behaviour = b;
         login = l;
@@ -179,6 +183,22 @@ describe('BackgroundBrowser', () => {
         expect(status.error).toContain(message);
         expect(sessions[0]?.closed).toBe(true);
         expect(background.handlesReplies()).toBe(false);
+    });
+
+    it('waits for a new login instead of retrying a rejected one', async () => {
+        behaviour = { redirectToLogin: true, loginResult: { ok: false, error: 'Incorrect credentials' } };
+        login = { username: 'a', password: 'wrong' };
+        background.serverStarted(URL_);
+        await background.restart();
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+        expect(launches.length).toBe(1);
+        expect(background.status().nextRetryAt).toBeUndefined();
+
+        behaviour = { redirectToLogin: true };
+        login = { username: 'a', password: 'right' };
+        await background.restart();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(background.status().state).toBe('running');
     });
 
     it('retries with backoff and recovers', async () => {
@@ -241,6 +261,13 @@ describe('BackgroundBrowser', () => {
 });
 
 describe('describeProblem', () => {
+    it('blames a custom Chrome path rather than a missing install', () => {
+        const error = new Error("browserType.launch: Failed to launch chromium because executable doesn't exist at /usr/bin/nope");
+        expect(describeProblem(error, null, '/usr/bin/nope')).toBe(
+            'No Chrome or Chromium at /usr/bin/nope. Fix the path, or leave it blank to use the one installed for WhatsChat.',
+        );
+    });
+
     it.each([
         ["Cannot find package 'playwright-core' imported from /x", 'npm ci'],
         ['browserType.launch: Executable doesn\'t exist at /home/st/.cache/ms-playwright/chromium_headless_shell-1248', 'npm run browser:install'],
