@@ -60,7 +60,9 @@ export interface BridgeStatus {
 export type BridgeEvent =
     | { readonly type: 'status'; readonly status: BridgeStatus }
     | { readonly type: 'batch'; readonly batch: BatchView }
-    | { readonly type: 'batch-dropped'; readonly batchId: string; readonly contactId: string; readonly reason: DropReason };
+    | { readonly type: 'batch-dropped'; readonly batchId: string; readonly contactId: string; readonly reason: DropReason }
+    /** SillyTavern wrote to this chat on WhatsApp's behalf; other tabs showing it should reload it. */
+    | { readonly type: 'chat-updated'; readonly characterAvatar: string; readonly chatFile: string };
 
 export interface ReplyInput {
     readonly text: string;
@@ -218,6 +220,8 @@ export class BridgeService {
             return { ok: false, reason: 'contact-removed' };
         }
         if (input.chatFile && !contact.chatFile) this.rememberChatFile(contact.id, input.chatFile);
+        const chatFile = input.chatFile ?? contact.chatFile;
+        if (chatFile) this.emit({ type: 'chat-updated', characterAvatar: contact.characterAvatar, chatFile });
 
         const names = [input.characterName, input.userName].filter((n): n is string => typeof n === 'string');
         const cleaned = cleanReply(input.text, { ...config.cleaner, names });
@@ -257,11 +261,14 @@ export class BridgeService {
     }
 
     /** The extension couldn't produce a reply. The batch is dropped. */
-    fail(batchId: string, clientId: string, reason: string): FailResponse {
+    fail(batchId: string, clientId: string, reason: string, chatFile?: string): FailResponse {
         const claimant = this.dispatcher.claimant(batchId);
         if (claimant !== clientId) return { ok: false, reason: 'not-claimed' };
         this.logger.warn(`SillyTavern could not reply to batch ${batchId}: ${reason}`);
-        this.dispatcher.release(batchId, clientId, 'failed');
+        const released = this.dispatcher.release(batchId, clientId, 'failed');
+        // The contact's message may already be in the chat even though no reply was written.
+        const contact = released.ok ? findContact(this.config.get(), released.batch.contactId) : undefined;
+        if (contact && chatFile) this.emit({ type: 'chat-updated', characterAvatar: contact.characterAvatar, chatFile });
         this.emitStatus();
         return { ok: true };
     }

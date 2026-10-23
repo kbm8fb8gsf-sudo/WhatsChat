@@ -248,6 +248,21 @@ describe('BridgeService batch handling', () => {
         expect(config.get().contacts[1]?.chatFile).toBe('Coding Sensei - 2026-10-23@15h00m00s');
     });
 
+    it('announces the chat it wrote to, after replies and after failures', async () => {
+        setup();
+        transport.receive(BOB, 'hi');
+        await vi.advanceTimersByTimeAsync(1_000);
+        claimed('batch-1');
+        service.reply('batch-1', 'tab-1', { text: 'hello', chatFile: 'Sensei - new' });
+        expect(events).toContainEqual({ type: 'chat-updated', characterAvatar: 'Coding Sensei.png', chatFile: 'Sensei - new' });
+
+        transport.receive(ALICE, 'again');
+        await vi.advanceTimersByTimeAsync(1_000);
+        claimed('batch-2');
+        service.fail('batch-2', 'tab-1', 'API offline', 'Seraphina - WhatsApp');
+        expect(events).toContainEqual({ type: 'chat-updated', characterAvatar: 'Seraphina.png', chatFile: 'Seraphina - WhatsApp' });
+    });
+
     it('does not overwrite a chat the contact already has', async () => {
         setup();
         transport.receive(ALICE, 'hi');

@@ -1,10 +1,21 @@
 import type { Request, Response, Router } from 'express';
 import QRCode from 'qrcode';
 import { z } from 'zod';
+import type { BackgroundStatus } from '../background/background-browser.js';
 import type { ConfigStore } from '../config/store.js';
-import type { BridgeEvent, BridgeService } from '../core/bridge-service.js';
+import type { BridgeEvent, BridgeService, BridgeStatus } from '../core/bridge-service.js';
 import type { Logger } from '../util/logger.js';
-import type { SseHub } from './sse.js';
+import type { ClientRole, SseHub } from './sse.js';
+
+/** What the routes need from background mode. */
+export interface BackgroundControl {
+    /** True while new batches should go only to the hidden background page. */
+    handlesReplies(): boolean;
+    status(): BackgroundStatus;
+    restart(): Promise<void>;
+    describeLogin(): { username: string; passwordSet: boolean };
+    setLogin(username: string, password: string | undefined): Promise<void>;
+}
 
 export interface RouteDeps {
     /** Read on every request, because the service is created after the routes are registered. */
@@ -12,7 +23,10 @@ export interface RouteDeps {
     store: ConfigStore;
     hub: SseHub;
     logger: Logger;
+    background: BackgroundControl;
 }
+
+export type FullStatus = BridgeStatus & { background: BackgroundStatus };
 
 const clientIdSchema = z.string().min(1).max(100);
 const claimBody = z.object({ clientId: clientIdSchema });
@@ -23,7 +37,12 @@ const replyBody = z.object({
     characterName: z.string().max(200).optional(),
     userName: z.string().max(200).optional(),
 });
-const failBody = z.object({ clientId: clientIdSchema, reason: z.string().max(2_000).default('unknown error') });
+const failBody = z.object({
+    clientId: clientIdSchema,
+    reason: z.string().max(2_000).default('unknown error'),
+    chatFile: z.string().min(1).max(500).optional(),
+});
+const loginBody = z.object({ username: z.string().max(200), password: z.string().max(500).optional() });
 
 type Handler = (req: Request, res: Response) => Promise<void> | void;
 
@@ -50,7 +69,7 @@ export function registerRoutes(router: Router, deps: RouteDeps): void {
         };
 
     router.get('/status', handle((_req, res) => {
-        res.json(deps.service.status());
+        res.json(fullStatus(deps));
     }));
 
     router.get('/qr', handle(async (_req, res) => {
@@ -71,34 +90,39 @@ export function registerRoutes(router: Router, deps: RouteDeps): void {
 
     router.post('/connect', handle(async (_req, res) => {
         await deps.service.connect();
-        res.json(deps.service.status());
+        res.json(fullStatus(deps));
     }));
 
     router.post('/disconnect', handle(async (_req, res) => {
         await deps.service.disconnect();
-        res.json(deps.service.status());
+        res.json(fullStatus(deps));
     }));
 
     router.post('/logout', handle(async (_req, res) => {
         await deps.service.logout();
-        res.json(deps.service.status());
+        res.json(fullStatus(deps));
     }));
 
     router.get('/events', handle((req, res) => {
         const requested = typeof req.query['clientId'] === 'string' ? req.query['clientId'] : undefined;
-        const clientId = hub.connect(req, res, requested, (id) => {
+        const role: ClientRole = req.query['role'] === 'worker' ? 'worker' : 'tab';
+        const clientId = hub.connect(req, res, requested, role, (id) => {
             deps.service.clientGone(id);
         });
         if (clientId === null) return;
         hub.send(clientId, 'hello', { clientId });
-        hub.send(clientId, 'status', deps.service.status());
+        hub.send(clientId, 'status', fullStatus(deps));
         const pending = deps.service.pendingOffer();
-        if (pending) hub.send(clientId, 'batch', pending);
+        if (pending && offerAudience(deps)(role)) hub.send(clientId, 'batch', pending);
     }));
 
     router.post('/batches/:id/claim', handle((req, res) => {
         const body = parseBody(claimBody, req, res);
         if (!body) return;
+        if (deps.background.handlesReplies() && hub.roleOf(body.clientId) !== 'worker') {
+            res.status(409).json({ ok: false, reason: 'handled-in-background' });
+            return;
+        }
         const result = deps.service.claim(batchId(req), body.clientId);
         if (result.ok) res.json(result);
         else res.status(409).json(result);
@@ -115,21 +139,61 @@ export function registerRoutes(router: Router, deps: RouteDeps): void {
     router.post('/batches/:id/fail', handle((req, res) => {
         const body = parseBody(failBody, req, res);
         if (!body) return;
-        const result = deps.service.fail(batchId(req), body.clientId, body.reason);
+        const result = deps.service.fail(batchId(req), body.clientId, body.reason, body.chatFile);
         if (result.ok) res.json(result);
         else res.status(409).json(result);
     }));
+
+    // A tab saw SillyTavern's settings, a character or a lorebook change. The hidden page
+    // reloads before its next reply so it doesn't use (or save) an out-of-date copy.
+    router.post('/background/stale', handle((_req, res) => {
+        hub.broadcast('stale', { at: Date.now() }, isWorker);
+        res.json({ ok: true });
+    }));
+
+    router.get('/background/login', handle((_req, res) => {
+        res.json(deps.background.describeLogin());
+    }));
+
+    router.put('/background/login', handle(async (req, res) => {
+        const body = parseBody(loginBody, req, res);
+        if (!body) return;
+        await deps.background.setLogin(body.username, body.password);
+        void deps.background.restart();
+        res.json(deps.background.describeLogin());
+    }));
+
+    router.post('/background/restart', handle(async (_req, res) => {
+        await deps.background.restart();
+        res.json(fullStatus(deps));
+    }));
 }
 
-/** Forward service events and config changes to every connected tab. */
-export function forwardEvents(deps: RouteDeps): () => void {
+export function fullStatus(deps: RouteDeps): FullStatus {
+    return { ...deps.service.status(), background: deps.background.status() };
+}
+
+const isWorker = (role: ClientRole): boolean => role === 'worker';
+const everyone = (): boolean => true;
+
+/** While background mode handles replies, only the hidden page gets offered batches. */
+function offerAudience(deps: RouteDeps): (role: ClientRole) => boolean {
+    return deps.background.handlesReplies() ? isWorker : everyone;
+}
+
+/**
+ * Forward service events and config changes to connected clients. `announce` re-sends the
+ * status and the pending batch, for when background mode starts or stops and the audience
+ * for batches changes.
+ */
+export function forwardEvents(deps: RouteDeps): { stop: () => void; announce: () => void } {
     const offService = deps.service.onEvent((event: BridgeEvent) => {
         switch (event.type) {
             case 'status':
-                deps.hub.broadcast('status', event.status);
+                deps.hub.broadcast('status', fullStatus(deps));
                 break;
             case 'batch':
-                deps.hub.broadcast('batch', event.batch);
+                deps.hub.broadcast('batch', event.batch, offerAudience(deps));
                 break;
             case 'batch-dropped':
                 deps.hub.broadcast('batch-dropped', {
@@ -138,14 +202,28 @@ export function forwardEvents(deps: RouteDeps): () => void {
                     reason: event.reason,
                 });
                 break;
+            case 'chat-updated':
+                deps.hub.broadcast(
+                    'chat-updated',
+                    { characterAvatar: event.characterAvatar, chatFile: event.chatFile },
+                    (role) => role === 'tab',
+                );
+                break;
         }
     });
     const offConfig = deps.store.onChange((config) => {
         deps.hub.broadcast('config', config);
     });
-    return () => {
-        offService();
-        offConfig();
+    return {
+        stop: () => {
+            offService();
+            offConfig();
+        },
+        announce: () => {
+            deps.hub.broadcast('status', fullStatus(deps));
+            const pending = deps.service.pendingOffer();
+            if (pending) deps.hub.broadcast('batch', pending, offerAudience(deps));
+        },
     };
 }
 

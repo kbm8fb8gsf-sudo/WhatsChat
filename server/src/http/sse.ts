@@ -5,6 +5,9 @@ import type { Logger } from '../util/logger.js';
 /** Ids a tab may choose for itself, so it keeps its claims across reconnects. */
 const CLIENT_ID = /^[A-Za-z0-9-]{8,64}$/;
 
+/** "tab": someone's browser. "worker": the hidden background copy of SillyTavern. */
+export type ClientRole = 'tab' | 'worker';
+
 /**
  * Server-sent events to the extension tabs. Each tab has a client id (its own, or one assigned
  * in the "hello" event) that it uses to claim batches. A tab that drops its connection gets a
@@ -12,6 +15,8 @@ const CLIENT_ID = /^[A-Za-z0-9-]{8,64}$/;
  */
 export class SseHub {
     private readonly clients = new Map<string, Response>();
+    /** Kept through the reconnect grace period, so a reconnecting client keeps its role. */
+    private readonly roles = new Map<string, ClientRole>();
     private readonly goneTimers = new Map<string, TimerHandle>();
     private heartbeat: TimerHandle | null = null;
     private closed = false;
@@ -32,6 +37,7 @@ export class SseHub {
         req: Request,
         res: Response,
         requestedId: string | undefined,
+        role: ClientRole,
         onGone: (clientId: string) => void,
     ): string | null {
         if (this.closed) {
@@ -55,6 +61,7 @@ export class SseHub {
         res.flushHeaders();
         res.write('retry: 3000\n\n');
         this.clients.set(clientId, res);
+        this.roles.set(clientId, role);
         previous?.end();
 
         req.on('close', () => {
@@ -66,6 +73,7 @@ export class SseHub {
                 clientId,
                 this.scheduler.setTimeout(() => {
                     this.goneTimers.delete(clientId);
+                    this.roles.delete(clientId);
                     onGone(clientId);
                 }, this.graceMs),
             );
@@ -79,9 +87,17 @@ export class SseHub {
         if (res) this.write(clientId, res, `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     }
 
-    broadcast(event: string, data: unknown): void {
+    /** Send to every connected client, or only those whose role `to` accepts. */
+    broadcast(event: string, data: unknown, to: (role: ClientRole) => boolean = () => true): void {
         const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-        for (const [clientId, res] of this.clients) this.write(clientId, res, frame);
+        for (const [clientId, res] of this.clients) {
+            if (to(this.roles.get(clientId) ?? 'tab')) this.write(clientId, res, frame);
+        }
+    }
+
+    /** The role a client connected with, while it's connected or within its grace period. */
+    roleOf(clientId: string): ClientRole | undefined {
+        return this.roles.get(clientId);
     }
 
     get size(): number {
@@ -93,6 +109,7 @@ export class SseHub {
         this.closed = true;
         for (const timer of this.goneTimers.values()) this.scheduler.clearTimeout(timer);
         this.goneTimers.clear();
+        this.roles.clear();
         for (const res of this.clients.values()) {
             try {
                 res.end();

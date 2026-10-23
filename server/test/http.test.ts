@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { BrowserSession, Launcher } from '../src/background/session.js';
 import { createPlugin, type PluginHandle } from '../src/plugin.js';
 import { FakeTransport } from '../src/transport/fake.js';
 import { silentLogger } from '../src/util/logger.js';
@@ -16,6 +17,20 @@ const BASE_CONFIG = {
     contacts: [{ id: ALICE, characterAvatar: 'Seraphina.png', chatFile: 'chat-1' }],
     realistic: { preset: 'off' },
     inbound: { quietMs: 0 },
+};
+
+/** Stands in for Playwright: "opens" SillyTavern instantly. The test plays the hidden page itself. */
+const fakeLauncher: Launcher = () => {
+    const session: BrowserSession = {
+        version: 'test',
+        open: () => Promise.resolve(),
+        currentUrl: () => 'http://127.0.0.1:1/',
+        login: () => Promise.resolve({ ok: true }),
+        waitForWorker: () => Promise.resolve(),
+        onEnded: () => undefined,
+        close: () => Promise.resolve(),
+    };
+    return Promise.resolve(session);
 };
 
 let dir: string;
@@ -31,6 +46,7 @@ async function startPlugin(): Promise<void> {
         dataDir: dir,
         logger: silentLogger,
         createTransport: () => (transport = new FakeTransport()),
+        launcher: fakeLauncher,
         clientGraceMs: 100,
     });
     const app = express();
@@ -47,8 +63,11 @@ async function api(method: string, route: string, body?: unknown): Promise<{ sta
     return { status: res.status, json: await res.json() };
 }
 
-async function events(requestedId?: string): Promise<{ client: SseClient; clientId: string }> {
-    const query = requestedId ? `?clientId=${requestedId}` : '';
+async function events(requestedId?: string, role?: 'worker'): Promise<{ client: SseClient; clientId: string }> {
+    const params = new URLSearchParams();
+    if (requestedId) params.set('clientId', requestedId);
+    if (role) params.set('role', role);
+    const query = params.size > 0 ? `?${params.toString()}` : '';
     const client = await SseClient.open(`${base}/events${query}`);
     clients.push(client);
     const hello = await client.next('hello');
@@ -215,6 +234,74 @@ describe('event stream and batch flow', () => {
         await waitFor(() => client.ended);
         const late = await fetch(`${base}/events`);
         expect(late.status).toBe(503);
+    });
+});
+
+describe('background replies', () => {
+    async function enableBackground(): Promise<void> {
+        await api('PUT', '/config', { ...BASE_CONFIG, background: { enabled: true, url: 'http://127.0.0.1:1/' } });
+        await waitFor(() => plugin.background.status().state === 'running');
+    }
+
+    it('reports its state in the status', async () => {
+        expect((await api('GET', '/status')).json).toMatchObject({ background: { enabled: false, state: 'off' } });
+        await enableBackground();
+        expect((await api('GET', '/status')).json).toMatchObject({
+            background: { enabled: true, state: 'running', browserVersion: 'test' },
+        });
+    });
+
+    it('offers batches only to the hidden page, and stops tabs claiming them', async () => {
+        await enableBackground();
+        const tab = await events();
+        const worker = await events('worker-0000-0001', 'worker');
+        transport.receive(ALICE, 'hi');
+        const offer = (await worker.client.next('batch')).data as { id: string };
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        expect(tab.client.all('batch')).toEqual([]);
+
+        const fromTab = await api('POST', `/batches/${offer.id}/claim`, { clientId: tab.clientId });
+        expect(fromTab).toEqual({ status: 409, json: { ok: false, reason: 'handled-in-background' } });
+        expect((await api('POST', `/batches/${offer.id}/claim`, { clientId: worker.clientId })).status).toBe(200);
+    });
+
+    it('tells tabs (not the hidden page) when a chat was written to', async () => {
+        await enableBackground();
+        const tab = await events();
+        const worker = await events('worker-0000-0002', 'worker');
+        transport.receive(ALICE, 'hi');
+        const offer = (await worker.client.next('batch')).data as { id: string };
+        await api('POST', `/batches/${offer.id}/claim`, { clientId: worker.clientId });
+        await api('POST', `/batches/${offer.id}/reply`, { clientId: worker.clientId, text: 'hello', chatFile: 'chat-1' });
+        expect((await tab.client.next('chat-updated')).data).toEqual({ characterAvatar: 'Seraphina.png', chatFile: 'chat-1' });
+        expect(worker.client.all('chat-updated')).toEqual([]);
+    });
+
+    it('falls back to tabs when background mode is turned off, re-offering the waiting batch', async () => {
+        await enableBackground();
+        const tab = await events();
+        transport.receive(ALICE, 'hi');
+        await waitFor(() => plugin.service.status().pendingBatches === 1);
+        expect(tab.client.all('batch')).toEqual([]);
+        await api('PUT', '/config', { ...BASE_CONFIG, background: { enabled: false } });
+        expect((await tab.client.next('batch')).data).toMatchObject({ text: 'hi' });
+    });
+
+    it('passes "something changed" from tabs to the hidden page only', async () => {
+        const tab = await events();
+        const worker = await events('worker-0000-0003', 'worker');
+        await api('POST', '/background/stale');
+        const stale = (await worker.client.next('stale')).data as { at: number };
+        expect(Math.abs(stale.at - Date.now())).toBeLessThan(5_000);
+        expect(tab.client.all('stale')).toEqual([]);
+    });
+
+    it('stores the SillyTavern login without ever returning the password', async () => {
+        expect((await api('GET', '/background/login')).json).toEqual({ username: '', passwordSet: false });
+        const saved = await api('PUT', '/background/login', { username: 'lewis', password: 'hunter2' });
+        expect(saved.json).toEqual({ username: 'lewis', passwordSet: true });
+        expect(JSON.stringify((await api('GET', '/config')).json)).not.toContain('hunter2');
+        expect(JSON.stringify((await api('GET', '/status')).json)).not.toContain('hunter2');
     });
 });
 

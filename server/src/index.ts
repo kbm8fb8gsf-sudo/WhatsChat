@@ -1,5 +1,7 @@
+import type { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import type { Router } from 'express';
+import { launchWithPlaywright } from './background/playwright-session.js';
 import { createPlugin, type PluginHandle } from './plugin.js';
 import { createBaileysSocket } from './transport/baileys-socket.js';
 import { WhatsAppTransport } from './transport/whatsapp.js';
@@ -23,6 +25,9 @@ export async function init(router: Router): Promise<void> {
     handle = await createPlugin(router, {
         dataDir: dataDirectory(),
         logger,
+        launcher: launchWithPlaywright,
+        // SillyTavern 1.19 announces its address here once it's listening.
+        serverEvents: (process as NodeJS.Process & { serverEvents?: EventEmitter }).serverEvents,
         createTransport: ({ sessionDir, store, scheduler, logger: transportLogger }) =>
             new WhatsAppTransport({
                 authDir: sessionDir,
