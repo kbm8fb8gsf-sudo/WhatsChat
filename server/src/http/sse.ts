@@ -2,12 +2,17 @@ import type { Request, Response } from 'express';
 import type { Scheduler, TimerHandle } from '../core/scheduler.js';
 import type { Logger } from '../util/logger.js';
 
+/** Ids a tab may choose for itself, so it keeps its claims across reconnects. */
+const CLIENT_ID = /^[A-Za-z0-9-]{8,64}$/;
+
 /**
- * Server-sent events to the extension tabs. Each tab gets a client id in a "hello" event,
- * which it uses to claim batches.
+ * Server-sent events to the extension tabs. Each tab has a client id (its own, or one assigned
+ * in the "hello" event) that it uses to claim batches. A tab that drops its connection gets a
+ * grace period to reconnect before it's treated as gone.
  */
 export class SseHub {
     private readonly clients = new Map<string, Response>();
+    private readonly goneTimers = new Map<string, TimerHandle>();
     private heartbeat: TimerHandle | null = null;
     private closed = false;
 
@@ -16,15 +21,31 @@ export class SseHub {
         private readonly newId: () => string,
         private readonly logger: Logger,
         private readonly heartbeatMs = 15_000,
+        private readonly graceMs = 10_000,
     ) {}
 
-    /** Take over the response as an event stream. `onClose` runs when the tab disconnects. */
-    connect(req: Request, res: Response, onClose: (clientId: string) => void): string | null {
+    /**
+     * Take over the response as an event stream. `onGone` runs if the tab disconnects and
+     * doesn't come back within the grace period.
+     */
+    connect(
+        req: Request,
+        res: Response,
+        requestedId: string | undefined,
+        onGone: (clientId: string) => void,
+    ): string | null {
         if (this.closed) {
             res.status(503).json({ error: 'Shutting down' });
             return null;
         }
-        const clientId = this.newId();
+        const clientId = requestedId !== undefined && CLIENT_ID.test(requestedId) ? requestedId : this.newId();
+        const goneTimer = this.goneTimers.get(clientId);
+        if (goneTimer) {
+            this.scheduler.clearTimeout(goneTimer);
+            this.goneTimers.delete(clientId);
+        }
+        const previous = this.clients.get(clientId);
+
         res.status(200);
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
         // no-transform stops SillyTavern's compression middleware from buffering the stream.
@@ -34,10 +55,20 @@ export class SseHub {
         res.flushHeaders();
         res.write('retry: 3000\n\n');
         this.clients.set(clientId, res);
+        previous?.end();
+
         req.on('close', () => {
-            if (!this.clients.delete(clientId)) return;
+            if (this.clients.get(clientId) !== res) return;
+            this.clients.delete(clientId);
             this.stopHeartbeatIfIdle();
-            onClose(clientId);
+            if (this.closed) return;
+            this.goneTimers.set(
+                clientId,
+                this.scheduler.setTimeout(() => {
+                    this.goneTimers.delete(clientId);
+                    onGone(clientId);
+                }, this.graceMs),
+            );
         });
         this.startHeartbeat();
         return clientId;
@@ -60,6 +91,8 @@ export class SseHub {
     /** End every stream and stop the heartbeat. */
     closeAll(): void {
         this.closed = true;
+        for (const timer of this.goneTimers.values()) this.scheduler.clearTimeout(timer);
+        this.goneTimers.clear();
         for (const res of this.clients.values()) {
             try {
                 res.end();

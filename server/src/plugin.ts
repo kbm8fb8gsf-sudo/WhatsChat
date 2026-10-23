@@ -25,6 +25,8 @@ export interface PluginOptions {
     createTransport: (context: TransportContext) => MessagingTransport;
     scheduler?: Scheduler;
     heartbeatMs?: number;
+    /** How long a tab may be disconnected before its claimed batch is offered again. */
+    clientGraceMs?: number;
 }
 
 export interface PluginHandle {
@@ -40,7 +42,7 @@ export async function createPlugin(router: Router, options: PluginOptions): Prom
     const { logger } = options;
     const scheduler = options.scheduler ?? systemScheduler;
     const store = new ConfigStore(path.join(options.dataDir, 'config.json'), logger);
-    const hub = new SseHub(scheduler, randomUUID, logger, options.heartbeatMs);
+    const hub = new SseHub(scheduler, randomUUID, logger, options.heartbeatMs, options.clientGraceMs);
 
     // Routes first, so a failure further down still leaves the status endpoint mounted.
     let service: BridgeService | null = null;

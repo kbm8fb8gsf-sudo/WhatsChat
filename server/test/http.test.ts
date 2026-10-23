@@ -31,6 +31,7 @@ async function startPlugin(): Promise<void> {
         dataDir: dir,
         logger: silentLogger,
         createTransport: () => (transport = new FakeTransport()),
+        clientGraceMs: 100,
     });
     const app = express();
     app.use(express.json());
@@ -46,8 +47,9 @@ async function api(method: string, route: string, body?: unknown): Promise<{ sta
     return { status: res.status, json: await res.json() };
 }
 
-async function events(): Promise<{ client: SseClient; clientId: string }> {
-    const client = await SseClient.open(`${base}/events`);
+async function events(requestedId?: string): Promise<{ client: SseClient; clientId: string }> {
+    const query = requestedId ? `?clientId=${requestedId}` : '';
+    const client = await SseClient.open(`${base}/events${query}`);
     clients.push(client);
     const hello = await client.next('hello');
     return { client, clientId: (hello.data as { clientId: string }).clientId };
@@ -157,6 +159,27 @@ describe('event stream and batch flow', () => {
         const reoffer = await second.client.next('batch');
         expect((reoffer.data as { id: string }).id).toBe(batch.id);
         expect((await api('POST', `/batches/${batch.id}/claim`, { clientId: second.clientId })).status).toBe(200);
+    });
+
+    it('keeps a claim when the same tab reconnects within the grace period', async () => {
+        const tab = await events('tab-0000-aaaa');
+        expect(tab.clientId).toBe('tab-0000-aaaa');
+        const other = await events();
+        transport.receive(ALICE, 'hi');
+        const batch = (await tab.client.next('batch')).data as { id: string };
+        expect((await api('POST', `/batches/${batch.id}/claim`, { clientId: tab.clientId })).status).toBe(200);
+
+        tab.client.close();
+        const back = await events('tab-0000-aaaa');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(other.client.all('batch').length).toBe(1);
+        const reply = await api('POST', `/batches/${batch.id}/reply`, { clientId: back.clientId, text: 'still here' });
+        expect(reply.status).toBe(202);
+    });
+
+    it('ignores client ids that do not look like ids', async () => {
+        const { clientId } = await events('bad id!');
+        expect(clientId).not.toBe('bad id!');
     });
 
     it('replays the pending batch to a tab that connects later', async () => {

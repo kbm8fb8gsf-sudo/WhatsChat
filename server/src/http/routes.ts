@@ -85,7 +85,8 @@ export function registerRoutes(router: Router, deps: RouteDeps): void {
     }));
 
     router.get('/events', handle((req, res) => {
-        const clientId = hub.connect(req, res, (id) => {
+        const requested = typeof req.query['clientId'] === 'string' ? req.query['clientId'] : undefined;
+        const clientId = hub.connect(req, res, requested, (id) => {
             deps.service.clientGone(id);
         });
         if (clientId === null) return;
