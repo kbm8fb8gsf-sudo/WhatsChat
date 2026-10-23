@@ -73,6 +73,7 @@ export async function createPlugin(router: Router, options: PluginOptions): Prom
             handlesReplies: () => background?.handlesReplies() ?? false,
             status: () => background?.status() ?? BACKGROUND_OFF,
             restart: () => background?.restart() ?? Promise.resolve(),
+            reportHealth: (ai) => background?.reportHealth(ai),
             describeLogin: () => login.describe(),
             setLogin: (username, password) => login.set(username, password),
         },

@@ -1,5 +1,6 @@
 import type { Browser, ConsoleMessage, Page } from 'playwright-core';
 import type { Logger } from '../util/logger.js';
+import { withAutoConnect } from './settings-patch.js';
 import type { BrowserSession, Launcher } from './session.js';
 import { WORKER_FLAG, WORKER_READY_FLAG } from './session.js';
 
@@ -9,6 +10,9 @@ import { WORKER_FLAG, WORKER_READY_FLAG } from './session.js';
  * would undo changes you make in your own tab. It's told the save worked.
  */
 const BLOCKED_REQUESTS = /\/api\/settings\/save(?:[?#]|$)/;
+
+/** Settings as the page loads them; adjusted so the hidden page connects to the AI by itself. */
+const SETTINGS_LOAD = /\/api\/settings\/get(?:[?#]|$)/;
 
 /** Chromium flags that suit a headless server (and containers with a small /dev/shm). */
 const CHROMIUM_ARGS = ['--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--mute-audio'];
@@ -38,6 +42,16 @@ export const launchWithPlaywright: Launcher = async ({ executablePath, httpCrede
         await context.route(BLOCKED_REQUESTS, (route) =>
             route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
         );
+        await context.route(SETTINGS_LOAD, async (route) => {
+            const response = await route.fetch();
+            try {
+                const body = (await response.json()) as Record<string, unknown>;
+                if (typeof body['settings'] === 'string') body['settings'] = withAutoConnect(body['settings']);
+                await route.fulfill({ response, json: body });
+            } catch {
+                await route.fulfill({ response });
+            }
+        });
         const page = await context.newPage();
         page.on('dialog', (dialog) => {
             dialog.dismiss().catch(() => undefined);

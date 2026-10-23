@@ -98,6 +98,12 @@ Then in the WhatsChat panel, tick **Reply even when no SillyTavern tab is open**
 
 **If SillyTavern asks for a login** (user accounts, or the username and password prompt it uses with `listen: true`), open **SillyTavern login and advanced options**, enter the username and password, and click **Save login**. The password is stored in `data/background-login.json`, readable only by your user, and is never shown again.
 
+### Which AI it uses
+
+The hidden copy is SillyTavern itself, logged in as the same SillyTavern user, so it uses exactly what that user has selected. That covers the API type (Chat Completion, Text Completion and so on), the provider and model, and the connection profile. Your API keys stay where SillyTavern keeps them, in its own `secrets.json` on the server, and the hidden page never sees them: it asks the SillyTavern server to make the request, just like your tab does. To change the AI, change it in your own tab. The hidden copy picks it up before its next reply.
+
+The hidden copy connects to the AI by itself when it starts, even if **Auto-connect to Last Server** is off. That box stays as you set it. The panel shows whether it's connected.
+
 ### What changes when it's on
 
 - **Your tabs stop switching chats.** The hidden copy does that work, so a tab you're using stays where you left it.
@@ -154,6 +160,7 @@ Everything WhatsChat stores is in `plugins/whatschat/data/` (or the folder named
 | Background: "Chromium is missing system libraries" | Run `sudo env "PATH=$PATH" npm run browser:deps` once in `plugins/whatschat`, then **Try again**. |
 | Background: "SillyTavern asks for a username and password" / "didn't accept the login" | Enter or fix the login under **SillyTavern login and advanced options**. WhatsChat doesn't keep retrying a wrong password, so SillyTavern won't lock this machine out. |
 | Background: "the WhatsChat extension didn't start" | The extension must be installed for the SillyTavern user the hidden copy logs in as. If you installed it for one user only, either install it for that user too, or use "Install for all users". |
+| Background: "Running, but not connected to the AI" | SillyTavern couldn't reach the AI: check the API settings and key in your own tab, and that a local model server is running. The hidden copy retries the connection before its next reply. |
 | Background: "Could not open SillyTavern at …" | SillyTavern's address couldn't be worked out, e.g. behind a reverse proxy. Enter it (as seen from the server, e.g. `http://127.0.0.1:8000/`) under advanced options. |
 
 To see more detail in the console, start SillyTavern with `WHATSCHAT_DEBUG=1`.

@@ -54,6 +54,9 @@ export function fakeBridge(overrides = {}) {
             return Promise.resolve();
         }),
         onSillyTavernChange: vi.fn(),
+        apiStatus: () => ({ connected: true, api: 'openai' }),
+        waitForApi: vi.fn(() => Promise.resolve(true)),
+        onApiStatusChange: vi.fn(),
         ...overrides,
     };
     return { bridge, log };

@@ -22,6 +22,14 @@ export interface BackgroundStatus {
     readonly browserVersion?: string;
     readonly url?: string;
     readonly nextRetryAt?: number;
+    /** What the hidden page last reported about its AI connection. */
+    readonly ai?: AiHealth;
+}
+
+export interface AiHealth {
+    readonly connected: boolean;
+    /** SillyTavern's API type, e.g. "openai" (Chat Completion) or "textgenerationwebui". */
+    readonly api: string;
 }
 
 export interface BackgroundBrowserOptions {
@@ -63,6 +71,7 @@ export class BackgroundBrowser {
     private nextRetryAt: number | undefined;
     private session: BrowserSession | null = null;
     private announcedUrl: string | null = null;
+    private ai: AiHealth | undefined;
     private generation = 0;
     private attempt = 0;
     private retryTimer: TimerHandle | null = null;
@@ -119,7 +128,18 @@ export class BackgroundBrowser {
             ...(this.session ? { browserVersion: this.session.version } : {}),
             ...(url ? { url } : {}),
             ...(this.nextRetryAt ? { nextRetryAt: this.nextRetryAt } : {}),
+            ...(this.ai && this.state === 'running' ? { ai: this.ai } : {}),
         };
+    }
+
+    /** The hidden page reports whether SillyTavern is connected to the AI. */
+    reportHealth(ai: AiHealth): void {
+        if (this.ai?.connected === ai.connected && this.ai.api === ai.api) return;
+        this.ai = ai;
+        if (!ai.connected && this.state === 'running') {
+            this.options.logger.warn(`Background replies: the hidden copy isn't connected to the AI (${ai.api}).`);
+        }
+        this.setState(this.state, this.error, this.nextRetryAt);
     }
 
     onStatus(listener: (status: BackgroundStatus) => void): () => void {
@@ -220,6 +240,7 @@ export class BackgroundBrowser {
 
     private async shutdown(): Promise<void> {
         this.generation++;
+        this.ai = undefined;
         if (this.retryTimer) this.options.scheduler.clearTimeout(this.retryTimer);
         this.retryTimer = null;
         const session = this.session;

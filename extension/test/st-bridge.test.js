@@ -35,6 +35,8 @@ function fakeSillyTavern() {
         },
         name1: 'Lewis',
         name2: 'Seraphina',
+        onlineStatus: 'no_connection',
+        mainApi: 'openai',
         eventSource: { on: vi.fn(), removeListener: vi.fn() },
         eventTypes: {},
         extensionSettings: {},
@@ -272,6 +274,15 @@ describe('st-bridge', () => {
         const st = fakeSillyTavern();
         await st.bridge.reloadOpenChat();
         expect(st.ctx.reloadCurrentChat).toHaveBeenCalledOnce();
+    });
+
+    it('reports the AI connection and can wait for it', async () => {
+        const st = fakeSillyTavern();
+        expect(st.bridge.apiStatus()).toEqual({ connected: false, api: 'openai' });
+        expect(await st.bridge.waitForApi(0)).toBe(false);
+        st.ctx.onlineStatus = 'gpt-4o';
+        expect(st.bridge.apiStatus()).toEqual({ connected: true, api: 'openai' });
+        expect(await st.bridge.waitForApi(1_000)).toBe(true);
     });
 
     it('reports saved settings, characters and lorebooks', () => {

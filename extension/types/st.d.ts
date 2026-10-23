@@ -34,6 +34,10 @@ declare global {
         chatId: string | undefined;
         name1: string;
         name2: string;
+        /** "no_connection" until SillyTavern has connected to the AI. */
+        onlineStatus: string;
+        /** Selected API type, e.g. "openai" for Chat Completion. */
+        mainApi: string;
         eventSource: STEventSource;
         eventTypes: Record<string, string>;
         getRequestHeaders(): Record<string, string>;

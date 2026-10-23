@@ -17,7 +17,7 @@ export class BatchProcessor {
      *   api: Pick<ApiClient, 'claim' | 'reply' | 'fail'>,
      *   bridge: Bridge,
      *   settings: () => { restorePreviousChat: boolean },
-     *   beforeClaim?: (batch: BatchView) => boolean,
+     *   beforeClaim?: (batch: BatchView) => boolean | Promise<boolean>,
      *   rereadChat?: boolean,
      *   afterBatch?: () => void,
      *   renewMs?: number,
@@ -84,7 +84,7 @@ export class BatchProcessor {
             if (next.done) return;
             this.waiting.delete(next.value.id);
             this.current = next.value.id;
-            if (!this.beforeClaim(next.value)) {
+            if (!(await this.beforeClaim(next.value))) {
                 this.current = null;
                 return;
             }

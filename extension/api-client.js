@@ -37,6 +37,7 @@ export const API_BASE = '/api/plugins/whatschat';
  * @property {string} [browserVersion]
  * @property {string} [url]
  * @property {number} [nextRetryAt]
+ * @property {{ connected: boolean, api: string }} [ai]
  */
 
 /**
@@ -201,6 +202,14 @@ export class ApiClient {
     /** Tell the hidden background copy that SillyTavern's data changed, so it reloads. */
     markStale() {
         return this.request('POST', '/background/stale');
+    }
+
+    /**
+     * The hidden background page reports its AI connection, for the panel.
+     * @param {{ connected: boolean, api: string }} health
+     */
+    reportHealth(health) {
+        return this.request('POST', '/background/health', health);
     }
 
     /** @returns {Promise<{ username: string, passwordSet: boolean }>} */

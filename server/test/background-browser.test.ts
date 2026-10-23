@@ -249,6 +249,17 @@ describe('BackgroundBrowser', () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    it('shows the AI connection the hidden page reports, only while running', async () => {
+        background.serverStarted(URL_);
+        await background.restart();
+        await vi.advanceTimersByTimeAsync(0);
+        background.reportHealth({ connected: false, api: 'openai' });
+        expect(background.status().ai).toEqual({ connected: false, api: 'openai' });
+        expect(statuses.at(-1)?.ai).toEqual({ connected: false, api: 'openai' });
+        await background.restart();
+        expect(background.status().ai).toBeUndefined();
+    });
+
     it('stopping during a retry cancels it', async () => {
         launchError = new Error('boom');
         background.serverStarted(URL_);

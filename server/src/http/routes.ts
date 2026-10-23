@@ -1,7 +1,7 @@
 import type { Request, Response, Router } from 'express';
 import QRCode from 'qrcode';
 import { z } from 'zod';
-import type { BackgroundStatus } from '../background/background-browser.js';
+import type { AiHealth, BackgroundStatus } from '../background/background-browser.js';
 import type { ConfigStore } from '../config/store.js';
 import type { BridgeEvent, BridgeService, BridgeStatus } from '../core/bridge-service.js';
 import type { Logger } from '../util/logger.js';
@@ -13,6 +13,7 @@ export interface BackgroundControl {
     handlesReplies(): boolean;
     status(): BackgroundStatus;
     restart(): Promise<void>;
+    reportHealth(ai: AiHealth): void;
     describeLogin(): { username: string; passwordSet: boolean };
     setLogin(username: string, password: string | undefined): Promise<void>;
 }
@@ -43,6 +44,7 @@ const failBody = z.object({
     chatFile: z.string().min(1).max(500).optional(),
 });
 const loginBody = z.object({ username: z.string().max(200), password: z.string().max(500).optional() });
+const healthBody = z.object({ connected: z.boolean(), api: z.string().max(100) });
 
 type Handler = (req: Request, res: Response) => Promise<void> | void;
 
@@ -148,6 +150,14 @@ export function registerRoutes(router: Router, deps: RouteDeps): void {
     // reloads before its next reply so it doesn't use (or save) an out-of-date copy.
     router.post('/background/stale', handle((_req, res) => {
         hub.broadcast('stale', { at: Date.now() }, isWorker);
+        res.json({ ok: true });
+    }));
+
+    // The hidden page reports whether SillyTavern is connected to the AI.
+    router.post('/background/health', handle((req, res) => {
+        const body = parseBody(healthBody, req, res);
+        if (!body) return;
+        deps.background.reportHealth(body);
         res.json({ ok: true });
     }));
 

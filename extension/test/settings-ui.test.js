@@ -166,6 +166,13 @@ describe('SettingsPanel', () => {
         await panel.showStatus(status({ enabled: true, state: 'running' }));
         expect($('[data-role="background-text"]').textContent).toBe('Running: replies no longer need a tab open');
         expect($('[data-role="background-dot"]').dataset['tone']).toBe('ok');
+        await panel.showStatus(status({ enabled: true, state: 'running', ai: { connected: true, api: 'openai' } }));
+        expect($('[data-role="background-text"]').textContent).toBe(
+            'Running and connected to the AI (Chat Completion): replies no longer need a tab open',
+        );
+        await panel.showStatus(status({ enabled: true, state: 'running', ai: { connected: false, api: 'textgenerationwebui' } }));
+        expect($('[data-role="background-text"]').textContent).toContain('not connected to the AI (Text Completion)');
+        expect($('[data-role="background-dot"]').dataset['tone']).toBe('error');
         expect($('[data-action="restart-background"]').hidden).toBe(true);
         await panel.showStatus(status({ enabled: true, state: 'error', error: 'Chromium is not installed.' }));
         expect($('[data-role="background-text"]').textContent).toContain('Chromium is not installed.');

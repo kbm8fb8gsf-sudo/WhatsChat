@@ -65,7 +65,18 @@ export function describeBackground(background) {
     if (!background?.enabled) return { text: 'Off: replies need a SillyTavern tab open', tone: 'off' };
     switch (background.state) {
         case 'running':
-            return { text: 'Running: replies no longer need a tab open', tone: 'ok' };
+            if (background.ai && !background.ai.connected) {
+                return {
+                    text: `Running, but not connected to the AI (${apiName(background.ai.api)}). Check SillyTavern's API connection.`,
+                    tone: 'error',
+                };
+            }
+            return {
+                text: background.ai
+                    ? `Running and connected to the AI (${apiName(background.ai.api)}): replies no longer need a tab open`
+                    : 'Running: replies no longer need a tab open',
+                tone: 'ok',
+            };
         case 'starting':
             return { text: 'Starting the hidden copy of SillyTavern\u2026', tone: 'busy' };
         case 'waiting':
@@ -75,6 +86,19 @@ export function describeBackground(background) {
         case 'off':
             return { text: 'Off', tone: 'off' };
     }
+}
+
+/** SillyTavern's API types, as its API menu names them. @param {string} api */
+function apiName(api) {
+    /** @type {Record<string, string>} */
+    const names = {
+        openai: 'Chat Completion',
+        textgenerationwebui: 'Text Completion',
+        kobold: 'KoboldAI Classic',
+        koboldhorde: 'AI Horde',
+        novel: 'NovelAI',
+    };
+    return names[api] ?? (api || 'unknown API');
 }
 
 /**

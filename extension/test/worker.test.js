@@ -31,7 +31,8 @@ describe('needsReload', () => {
 });
 
 describe('startWorker', () => {
-    function setup() {
+    /** @param {{ connected?: boolean, stored?: Record<string, string> }} [options] */
+    function setup(options = {}) {
         /** @type {import('../api-client.js').StreamHandlers} */
         let handlers = {};
         const api = {
@@ -43,15 +44,28 @@ describe('startWorker', () => {
             claim: vi.fn((/** @type {string} */ id) => Promise.resolve({ ok: true, batch: batch({ id }) })),
             reply: vi.fn(() => Promise.resolve({ ok: true, bubbles: 1 })),
             fail: vi.fn(() => Promise.resolve({ ok: true })),
+            reportHealth: vi.fn(() => Promise.resolve({ ok: true })),
         };
-        const { bridge, log } = fakeBridge();
+        let connected = options.connected ?? true;
+        const { bridge, log } = fakeBridge({
+            apiStatus: () => ({ connected, api: 'openai' }),
+            waitForApi: vi.fn(() => Promise.resolve(connected)),
+        });
+        /** @type {Map<string, string>} */
+        const stored = new Map(Object.entries(options.stored ?? {}));
+        const storage = { getItem: (/** @type {string} */ k) => stored.get(k) ?? null, setItem: (/** @type {string} */ k, /** @type {string} */ v) => void stored.set(k, v) };
         const reload = vi.fn();
         let time = 1_000;
         /** @type {Record<string, unknown>} */
         const scope = {};
-        const processor = startWorker({ api: /** @type {any} */ (api), bridge, reload, now: () => time, scope });
+        const processor = startWorker({ api: /** @type {any} */ (api), bridge, reload, now: () => time, scope, storage });
         return {
             api,
+            bridge,
+            stored,
+            setConnected: (/** @type {boolean} */ value) => {
+                connected = value;
+            },
             log,
             reload,
             scope,
@@ -63,11 +77,37 @@ describe('startWorker', () => {
         };
     }
 
-    it('marks itself ready once its event stream is open', () => {
+    it('marks itself ready and reports its AI connection once its event stream is open', () => {
         const w = setup();
         expect(w.scope['__WHATSCHAT_WORKER_READY__']).toBeUndefined();
         w.handlers().connection?.('open');
         expect(w.scope['__WHATSCHAT_WORKER_READY__']).toBe(true);
+        expect(w.api.reportHealth).toHaveBeenCalledWith({ connected: true, api: 'openai' });
+    });
+
+    it('reports again when the AI connection changes', () => {
+        const w = setup();
+        const onChange = /** @type {import('vitest').Mock} */ (w.bridge.onApiStatusChange).mock.calls[0]?.[0];
+        w.setConnected(false);
+        onChange();
+        expect(w.api.reportHealth).toHaveBeenLastCalledWith({ connected: false, api: 'openai' });
+    });
+
+    it('reloads to reconnect when the AI is not connected, at most once a minute', async () => {
+        const w = setup({ connected: false });
+        w.handlers().batch?.(batch({ id: 'a' }));
+        await w.processor.whenIdle();
+        expect(w.reload).toHaveBeenCalledOnce();
+        expect(w.api.claim).not.toHaveBeenCalled();
+        expect(w.stored.get('whatschat.reconnectReloadAt')).toBe('1000');
+    });
+
+    it('tries anyway if it reloaded to reconnect very recently, so the failure gets reported', async () => {
+        const w = setup({ connected: false, stored: { 'whatschat.reconnectReloadAt': '990' } });
+        w.handlers().batch?.(batch());
+        await w.processor.whenIdle();
+        expect(w.reload).not.toHaveBeenCalled();
+        expect(w.api.claim).toHaveBeenCalledOnce();
     });
 
     it('replies without going back to a previous chat, re-reading the chat first', async () => {

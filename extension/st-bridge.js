@@ -47,6 +47,10 @@ const SYSTEM_ROLE = 0;
  *   or a lorebook are saved in this tab.
  * @property {() => Promise<void>} reloadOpenChat Re-read the open chat from disk, so changes made
  *   in another tab aren't overwritten.
+ * @property {() => { connected: boolean, api: string }} apiStatus Whether SillyTavern is connected
+ *   to the AI (it won't generate otherwise), and which kind of API is selected.
+ * @property {(timeoutMs: number) => Promise<boolean>} waitForApi Wait for the AI connection.
+ * @property {(callback: () => void) => void} onApiStatusChange
  */
 
 /** SillyTavern events that mean the hidden background copy's data is out of date. */
@@ -263,6 +267,28 @@ export function createBridge(deps = {}) {
         async reloadOpenChat() {
             await waitUntilIdle();
             await getContext().reloadCurrentChat();
+        },
+
+        apiStatus() {
+            const ctx = getContext();
+            return { connected: Boolean(ctx.onlineStatus) && ctx.onlineStatus !== 'no_connection', api: String(ctx.mainApi ?? '') };
+        },
+
+        async waitForApi(timeoutMs) {
+            const start = now();
+            for (;;) {
+                const status = getContext().onlineStatus;
+                if (status && status !== 'no_connection') return true;
+                if (now() - start >= timeoutMs) return false;
+                await sleep(500);
+            }
+        },
+
+        onApiStatusChange(callback) {
+            const ctx = getContext();
+            ctx.eventSource.on(ctx.eventTypes['ONLINE_STATUS_CHANGED'] ?? 'online_status_changed', () => {
+                callback();
+            });
         },
 
         onSillyTavernChange(callback) {

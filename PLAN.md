@@ -159,4 +159,5 @@ Requested so replies work with no browser tab open, on an Ubuntu server.
   - Basic auth (`listen: true`) and user accounts both worked once the login was saved, with clear messages before.
   - Shutdown left no Chromium processes.
   - Memory was about 0.5 GB for the hidden Chromium.
+- **AI connection:** SillyTavern only connects to the AI on page load if "Auto-connect to Last Server" is on, and it skips generating while disconnected. The hidden page therefore receives its settings with `auto_connect` forced on, in memory only. Before claiming a batch it waits up to 20 s for the connection, and it reloads to reconnect at most once a minute. It reports its connection to the panel. Verified end to end with auto-connect off: replies worked and `settings.json` kept `auto_connect: false`. For custom Chat Completion endpoints, SillyTavern skips the status check, so "connected" means what SillyTavern's own UI shows.
 - **Not verified here:** the browser download itself (`npm run browser:install`), because Playwright's CDN is blocked from the build container. The command and its target were checked with `--dry-run`.
