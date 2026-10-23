@@ -21,6 +21,8 @@ export class FakeTransport implements MessagingTransport {
     private readonly messageHandlers = new Set<(message: InboundMessage) => void>();
     private readonly statusHandlers = new Set<(status: TransportStatus) => void>();
     private readonly sendFailures: Error[] = [];
+    /** When set, markRead and setTyping reject with this error. */
+    presenceError: Error | null = null;
     private counter = 0;
 
     constructor(private readonly now: () => number = Date.now) {}
@@ -59,11 +61,13 @@ export class FakeTransport implements MessagingTransport {
     }
 
     setTyping(to: ReplyAddress, state: TypingState): Promise<void> {
+        if (this.presenceError) return Promise.reject(this.presenceError);
         this.calls.push({ kind: 'setTyping', to: to.id, state, at: this.now() });
         return Promise.resolve();
     }
 
     markRead(refs: readonly MessageRef[]): Promise<void> {
+        if (this.presenceError) return Promise.reject(this.presenceError);
         this.calls.push({ kind: 'markRead', ids: refs.map((r) => r.messageId), at: this.now() });
         return Promise.resolve();
     }

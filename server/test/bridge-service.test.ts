@@ -296,6 +296,17 @@ describe('BridgeService sending', () => {
         expect(transport.sent()).toEqual(['hello']);
     });
 
+    it('still sends the reply when read receipts and typing fail', async () => {
+        setup({ realistic: { preset: 'quick' } });
+        transport.receive(ALICE, 'hi');
+        await vi.advanceTimersByTimeAsync(1_000);
+        transport.presenceError = new Error('presence failed');
+        claimed('batch-1');
+        service.reply('batch-1', 'tab-1', { text: 'one\n\ntwo' });
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+        expect(transport.sent()).toEqual(['one', 'two']);
+    });
+
     it('drops the rest of a reply when a bubble keeps failing', async () => {
         setup({ realistic: { preset: 'quick' } });
         transport.receive(ALICE, 'hi');

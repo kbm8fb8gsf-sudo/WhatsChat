@@ -114,7 +114,7 @@ export const configSchema = z
             .prefault({}),
         whatsapp: z
             .object({
-                browserName: z.string().min(1).max(40).default('WhatsChat'),
+                /** Staying "online" stops your phone getting notifications, so it's off by default. */
                 markOnlineOnConnect: z.boolean().default(false),
             })
             .prefault({}),

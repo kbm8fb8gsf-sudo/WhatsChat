@@ -248,7 +248,7 @@ export class BridgeService {
                       label: `typing bubble ${String(step.bubble + 1)}`,
                       essential: false,
                       tag: batch.id,
-                      run: () => this.transport.setTyping(replyTo, 'typing'),
+                      run: () => this.bestEffort('typing', () => this.transport.setTyping(replyTo, 'typing')),
                   };
         });
         this.queue.schedule(batch.contactId, tasks);
@@ -377,7 +377,7 @@ export class BridgeService {
         const refs = batch.messages.map((m) => m.ref);
         const replyTo = batch.replyTo;
         const tasks: TimedTask[] = [
-            { at: plan.readAt, label: 'mark read', essential: false, tag: batch.id, run: () => this.transport.markRead(refs) },
+            { at: plan.readAt, label: 'mark read', essential: false, tag: batch.id, run: () => this.bestEffort('mark read', () => this.transport.markRead(refs)) },
         ];
         if (pacing.showTyping) {
             tasks.push({
@@ -385,7 +385,7 @@ export class BridgeService {
                 label: 'typing bubble 1',
                 essential: false,
                 tag: batch.id,
-                run: () => this.transport.setTyping(replyTo, 'typing'),
+                run: () => this.bestEffort('typing', () => this.transport.setTyping(replyTo, 'typing')),
             });
         }
         this.queue.schedule(batch.contactId, tasks);
@@ -410,9 +410,18 @@ export class BridgeService {
                 label: 'typing paused',
                 essential: false,
                 tag: PAUSED_TAG,
-                run: () => this.transport.setTyping(replyTo, 'paused'),
+                run: () => this.bestEffort('stop typing', () => this.transport.setTyping(replyTo, 'paused')),
             },
         ]);
+    }
+
+    /** Read receipts and typing are cosmetic: a failure is logged but never cancels the reply. */
+    private async bestEffort(action: string, fn: () => Promise<void>): Promise<void> {
+        try {
+            await fn();
+        } catch (error) {
+            this.logger.debug(`Could not ${action}`, error);
+        }
     }
 
     private async sendWithRetry(to: ReplyAddress, text: string): Promise<void> {
