@@ -45,6 +45,9 @@ export function fakeBridge(overrides = {}) {
         }),
         userName: () => 'Lewis',
         notify: vi.fn(),
+        onReady: (callback) => {
+            callback();
+        },
         ...overrides,
     };
     return { bridge, log };

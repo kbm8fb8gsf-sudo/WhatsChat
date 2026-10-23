@@ -222,6 +222,17 @@ describe('st-bridge', () => {
         await expect(bridge.addUserMessage('x')).rejects.toThrow('doNewChat, is_send_press, isChatSaving');
     });
 
+    it('runs the ready callback on SillyTavern\u2019s APP_READY event', () => {
+        const st = fakeSillyTavern();
+        st.ctx.eventTypes = { APP_READY: 'app_ready' };
+        const ready = vi.fn();
+        st.bridge.onReady(ready);
+        expect(st.ctx.eventSource.on).toHaveBeenCalledWith('app_ready', expect.any(Function));
+        const listener = /** @type {() => void} */ (st.ctx.eventSource.on.mock.calls[0]?.[1]);
+        listener();
+        expect(ready).toHaveBeenCalledOnce();
+    });
+
     it('restores the previous character chat or group chat', async () => {
         const st = fakeSillyTavern();
         const previous = st.bridge.getActiveChat();

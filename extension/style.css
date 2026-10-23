@@ -96,3 +96,8 @@
 .whatschat-unsaved::after {
     content: ' (unsaved)';
 }
+
+/* The display rules above would otherwise override the hidden attribute. */
+.whatschat-settings [hidden] {
+    display: none !important;
+}

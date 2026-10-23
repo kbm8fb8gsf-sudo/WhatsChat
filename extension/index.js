@@ -52,25 +52,29 @@ export async function onActivate() {
             console.error('[WhatsChat]', error);
         }
     };
-    await refresh();
 
-    api.listen({
-        status: (status) => {
-            void panel.showStatus(status);
-        },
-        batch: (batch) => {
-            processor.offer(batch);
-        },
-        batchDropped: ({ batchId }) => {
-            processor.dropped(batchId);
-        },
-        config: (next) => {
-            config = next;
-            panel.showConfig(next);
-        },
-        connection: (state) => {
-            // After SillyTavern restarts, pick up anything that changed while we were away.
-            if (state === 'open') void refresh();
-        },
+    // Wait for SillyTavern to finish loading (the character list in particular), but don't
+    // await it here: SillyTavern waits for this hook before it finishes loading.
+    bridge.onReady(() => {
+        void refresh();
+        api.listen({
+            status: (status) => {
+                void panel.showStatus(status);
+            },
+            batch: (batch) => {
+                processor.offer(batch);
+            },
+            batchDropped: ({ batchId }) => {
+                processor.dropped(batchId);
+            },
+            config: (next) => {
+                config = next;
+                panel.showConfig(next);
+            },
+            connection: (state) => {
+                // After SillyTavern restarts, pick up anything that changed while we were away.
+                if (state === 'open') void refresh();
+            },
+        });
     });
 }

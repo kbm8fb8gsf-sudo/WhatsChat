@@ -39,6 +39,8 @@ const SYSTEM_ROLE = 0;
  * @property {(previous: ActiveChat | null) => Promise<void>} restoreChat
  * @property {() => string} userName
  * @property {(message: string, level?: NoticeLevel) => void} notify
+ * @property {(callback: () => void) => void} onReady Run once SillyTavern has finished loading
+ *   (characters included). Runs straight away if it already has.
  */
 
 /**
@@ -205,6 +207,14 @@ export function createBridge(deps = {}) {
         },
 
         userName: () => getContext().name1,
+
+        onReady(callback) {
+            const ctx = getContext();
+            // APP_READY re-fires for listeners added after it happened.
+            ctx.eventSource.on(ctx.eventTypes['APP_READY'] ?? 'app_ready', () => {
+                callback();
+            });
+        },
 
         notify(message, level = 'info') {
             const toastr = /** @type {{ toastr?: Record<NoticeLevel, (m: string, t?: string) => void> }} */ (
