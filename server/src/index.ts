@@ -38,7 +38,7 @@ export async function init(router: Router): Promise<void> {
                 createSocket: createBaileysSocket,
             }),
     });
-    logger.info('Loaded. Open the WhatsChat panel in SillyTavern’s Extensions menu to set it up.');
+    logger.info('Loaded. Open the WhatsChat panel in SillyTavern\u2019s Extensions menu to set it up.');
 }
 
 /** Called by SillyTavern on shutdown (SIGINT, SIGTERM or an uncaught exception). */

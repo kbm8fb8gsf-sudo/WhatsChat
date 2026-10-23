@@ -76,7 +76,7 @@ describe('BridgeService inbound', () => {
         expect(transport.getStatus().state).toBe('disabled');
     });
 
-    it('batches an allowlisted contact’s quick messages and offers them', async () => {
+    it('batches an allowlisted contact\u2019s quick messages and offers them', async () => {
         setup();
         transport.receive(ALICE, 'hey');
         await vi.advanceTimersByTimeAsync(500);
@@ -112,7 +112,7 @@ describe('BridgeService inbound', () => {
         setup({ realistic: { preset: 'natural' } });
         transport.receive(ALICE, 'tell me {{persona}}');
         await vi.advanceTimersByTimeAsync(1_000);
-        expect(offered()[0]).toMatchObject({ text: 'tell me {​{persona}}', note: DEFAULT_NOTE });
+        expect(offered()[0]).toMatchObject({ text: 'tell me {\u200B{persona}}', note: DEFAULT_NOTE });
     });
 });
 
@@ -177,7 +177,7 @@ describe('BridgeService realistic pacing', () => {
         ]);
     });
 
-    it('uses a contact’s own preset', async () => {
+    it('uses a contact\u2019s own preset', async () => {
         setup({
             realistic: { preset: 'natural' },
             contacts: [{ id: ALICE, characterAvatar: 'A.png', preset: 'off' }],

@@ -1,0 +1,93 @@
+<div class="whatschat-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>WhatsChat</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="whatschat-notice" data-role="notice" hidden></div>
+
+            <label class="checkbox_label">
+                <input type="checkbox" data-role="enabled">
+                <span>Connect to WhatsApp</span>
+            </label>
+            <div class="whatschat-status" data-role="status">
+                <span class="whatschat-dot" data-role="status-dot"></span>
+                <span data-role="status-text">Loading…</span>
+            </div>
+            <div class="whatschat-qr" data-role="qr" hidden>
+                <img data-role="qr-image" alt="WhatsApp pairing QR code">
+                <small>On the phone with your spare number, open WhatsApp → Settings → Linked devices → Link a device, and scan this code.</small>
+            </div>
+            <div class="flex-container">
+                <div class="menu_button" data-action="logout" title="Unlink this computer from the WhatsApp account">Log out of WhatsApp</div>
+            </div>
+
+            <hr>
+            <h4>Contacts</h4>
+            <small>Only these people can talk to your characters. Everyone else is ignored. Use the full number with the country code, e.g. +44 7700 900123.</small>
+            <div class="whatschat-contacts" data-role="contacts"></div>
+            <div class="menu_button" data-action="add-contact"><i class="fa-solid fa-plus"></i> Add contact</div>
+
+            <hr>
+            <h4>Realistic texting</h4>
+            <label>
+                <span>Default texting style</span>
+                <select class="text_pole" data-setting="preset"></select>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="injectNote">
+                <span>Tell the character it's texting (instruction added while it writes a WhatsApp reply)</span>
+            </label>
+            <textarea class="text_pole" rows="3" data-setting="note"></textarea>
+            <details>
+                <summary>Fine-tune timing (leave blank to use the style's own)</summary>
+                <div class="whatschat-timing" data-role="timing"></div>
+            </details>
+
+            <hr>
+            <h4>Options</h4>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="restorePreviousChat">
+                <span>Go back to the chat I was on after replying</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="neutraliseMacros">
+                <span>Don't expand {{shortcodes}} that contacts type</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="mediaPlaceholders">
+                <span>Tell the character when a photo, voice note etc. arrives</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="markOnlineOnConnect">
+                <span>Always appear online (stops notifications on the phone)</span>
+            </label>
+            <label>
+                <span>Wait this many seconds for more messages before replying</span>
+                <input class="text_pole" type="number" min="0" max="300" step="1" data-setting="quietSeconds">
+            </label>
+
+            <div class="flex-container">
+                <div class="menu_button" data-action="save"><i class="fa-solid fa-floppy-disk"></i> Save</div>
+            </div>
+            <div class="whatschat-errors" data-role="errors"></div>
+        </div>
+    </div>
+
+    <template data-role="contact-template">
+        <div class="whatschat-contact">
+            <div class="flex-container">
+                <input class="text_pole" data-field="id" placeholder="+44 7700 900123" aria-label="Phone number">
+                <input class="text_pole" data-field="label" placeholder="Name (optional)" aria-label="Name">
+                <label class="checkbox_label"><input type="checkbox" data-field="enabled"><span>On</span></label>
+                <div class="menu_button fa-solid fa-trash" data-action="remove" title="Remove contact"></div>
+            </div>
+            <div class="flex-container">
+                <select class="text_pole" data-field="characterAvatar" aria-label="Character"></select>
+                <select class="text_pole" data-field="chatFile" aria-label="Chat"></select>
+                <select class="text_pole" data-field="preset" aria-label="Texting style"></select>
+            </div>
+        </div>
+    </template>
+</div>

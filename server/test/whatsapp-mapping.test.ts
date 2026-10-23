@@ -43,7 +43,7 @@ describe('toInboundMessage', () => {
         ['groups', { key: { remoteJid: '120363000000000000@g.us', id: 'A', fromMe: false } }],
         ['status updates', { key: { remoteJid: 'status@broadcast', id: 'A', fromMe: false } }],
         ['newsletters', { key: { remoteJid: '120363000000000000@newsletter', id: 'A', fromMe: false } }],
-        ['reactions', { message: { reactionMessage: { text: '❤️' } } }],
+        ['reactions', { message: { reactionMessage: { text: '\u2764\uFE0F' } } }],
         ['deletes and edits', { message: { protocolMessage: { type: 0 } } }],
         ['empty messages', { message: null }],
     ])('ignores %s', async (_name, overrides) => {

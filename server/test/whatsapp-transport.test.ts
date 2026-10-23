@@ -276,7 +276,7 @@ describe('WhatsAppTransport messages', () => {
 });
 
 describe('WhatsAppTransport presence', () => {
-    it('keeps "typing…" alive until a message is sent', async () => {
+    it('keeps "typing\u2026" alive until a message is sent', async () => {
         const s = await connected();
         await transport.setTyping(TO, 'typing');
         expect(s.presence).toEqual(['available', `composing:${PN}`]);

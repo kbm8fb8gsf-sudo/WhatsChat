@@ -1,1 +1,98 @@
 /* WhatsChat settings panel */
+
+.whatschat-settings h4 {
+    margin: 0.5em 0 0.25em;
+}
+
+.whatschat-settings label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+
+.whatschat-settings label.checkbox_label {
+    flex-direction: row;
+    align-items: center;
+}
+
+.whatschat-notice {
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    border: 1px solid var(--warning, #c9a227);
+    border-radius: 6px;
+}
+
+.whatschat-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+}
+
+.whatschat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+    background: #888;
+}
+
+.whatschat-dot[data-tone='ok'] {
+    background: #2fa84f;
+}
+
+.whatschat-dot[data-tone='busy'] {
+    background: #d6a21e;
+}
+
+.whatschat-dot[data-tone='error'] {
+    background: #d64545;
+}
+
+.whatschat-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.whatschat-qr img {
+    width: 260px;
+    max-width: 100%;
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+}
+
+.whatschat-contact {
+    border: 1px solid var(--SmartThemeBorderColor, #555);
+    border-radius: 6px;
+    padding: 6px;
+    margin: 6px 0;
+}
+
+.whatschat-contact .flex-container > input,
+.whatschat-contact .flex-container > select {
+    flex: 1 1 140px;
+    min-width: 0;
+}
+
+.whatschat-timing {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 4px 8px;
+}
+
+.whatschat-errors {
+    color: var(--warning, #d64545);
+}
+
+.whatschat-errors:empty {
+    display: none;
+}
+
+.whatschat-unsaved::after {
+    content: ' (unsaved)';
+}
