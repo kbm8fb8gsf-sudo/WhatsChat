@@ -1,0 +1,125 @@
+<div class="graph-memory-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Graph Memory</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="gm-status" data-gm="graphify-status">Looking for graphify…</div>
+            <div class="gm-row">
+                <button type="button" class="menu_button" data-gm="check">Check again</button>
+            </div>
+
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="enabled">
+                <span>Enable Graph Memory</span>
+            </label>
+
+            <div class="gm-field">
+                <span>Memory belongs to</span>
+                <select data-setting="scope">
+                    <option value="chat">This chat only</option>
+                    <option value="character">The character (shared by all its chats)</option>
+                </select>
+            </div>
+
+            <h4>This memory</h4>
+            <div class="gm-status" data-gm="memory-status">No chat open.</div>
+            <div class="gm-progress" data-gm="progress" hidden></div>
+            <div class="gm-row">
+                <button type="button" class="menu_button" data-gm="remember" title="Read every message not remembered yet, including the newest ones">Remember whole chat</button>
+                <button type="button" class="menu_button" data-gm="stop" hidden>Stop</button>
+                <button type="button" class="menu_button" data-gm="preview" title="Show what would be added to the prompt for the next reply">Preview recall</button>
+                <button type="button" class="menu_button" data-gm="graph" title="Open graphify's interactive picture of this memory">Open graph</button>
+            </div>
+            <div class="gm-row">
+                <button type="button" class="menu_button" data-gm="rebuild">Rebuild graph</button>
+                <button type="button" class="menu_button redWarningBG" data-gm="forget-chat">Forget chat</button>
+                <button type="button" class="menu_button redWarningBG" data-gm="delete">Delete memory</button>
+            </div>
+            <details class="gm-details" data-gm="preview-box" hidden>
+                <summary>Recalled for the next reply</summary>
+                <pre class="gm-pre" data-gm="preview-out"></pre>
+            </details>
+            <details class="gm-details">
+                <summary>Last recall</summary>
+                <pre class="gm-pre" data-gm="last-recall">Nothing recalled yet.</pre>
+            </details>
+
+            <h4>Recall</h4>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="recall.enabled">
+                <span>Add relevant memories to the prompt before each reply</span>
+            </label>
+            <div class="gm-grid">
+                <label class="gm-field">
+                    <span>Search with the last … messages</span>
+                    <input type="number" class="text_pole" min="1" max="20" data-setting="recall.recentMessages">
+                </label>
+                <label class="gm-field">
+                    <span title="How far graphify follows connections from what the messages mention">Connection depth</span>
+                    <input type="number" class="text_pole" min="1" max="6" data-setting="recall.graphDepth">
+                </label>
+                <label class="gm-field">
+                    <span>Longest memory note (characters)</span>
+                    <input type="number" class="text_pole" min="200" max="20000" step="100" data-setting="recall.maxChars">
+                </label>
+                <label class="gm-field">
+                    <span>Insert</span>
+                    <select data-setting="recall.position">
+                        <option value="in_chat">In the chat, … messages from the end</option>
+                        <option value="before_prompt">Before the story string</option>
+                        <option value="in_prompt">After the story string</option>
+                    </select>
+                </label>
+                <label class="gm-field">
+                    <span>Messages from the end</span>
+                    <input type="number" class="text_pole" min="0" max="100" data-setting="recall.depth">
+                </label>
+                <label class="gm-field">
+                    <span>As</span>
+                    <select data-setting="recall.role">
+                        <option value="system">System</option>
+                        <option value="user">User</option>
+                        <option value="assistant">Assistant</option>
+                    </select>
+                </label>
+            </div>
+            <label class="gm-field">
+                <span>Template (<code>{{memory}}</code> is replaced with the notes)</span>
+                <textarea class="text_pole" rows="3" data-setting="recall.template"></textarea>
+            </label>
+
+            <h4>Remembering</h4>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="extract.auto">
+                <span>Remember automatically as the chat goes on</span>
+            </label>
+            <div class="gm-grid">
+                <label class="gm-field">
+                    <span>After every … new messages</span>
+                    <input type="number" class="text_pole" min="1" max="200" data-setting="extract.every">
+                </label>
+                <label class="gm-field">
+                    <span title="The newest messages may still be swiped or edited">Leave the newest … alone</span>
+                    <input type="number" class="text_pole" min="0" max="20" data-setting="extract.holdBack">
+                </label>
+                <label class="gm-field">
+                    <span>Read at most … messages at once</span>
+                    <input type="number" class="text_pole" min="2" max="200" data-setting="extract.maxSegment">
+                </label>
+                <label class="gm-field">
+                    <span>Longest answer (tokens)</span>
+                    <input type="number" class="text_pole" min="200" max="16000" step="100" data-setting="extract.responseTokens">
+                </label>
+            </div>
+            <label class="gm-field">
+                <span>AI used for remembering</span>
+                <select data-setting="extract.profileId" data-gm="profiles">
+                    <option value="">The current connection</option>
+                </select>
+            </label>
+            <small class="gm-hint">A connection profile lets a cheaper or faster model do the remembering without changing your chat's connection.</small>
+        </div>
+    </div>
+</div>

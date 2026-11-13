@@ -176,3 +176,7 @@ npm run build   # compiles the server plugin to dist/
 - `server/src`: the plugin, in TypeScript (strict). `transport/` is the only code that knows about WhatsApp; `core/` holds the pure logic (allowlist, grouping, cleaning, splitting, pacing, queues).
 - `extension/`: the UI extension, in plain ES modules type-checked with JSDoc. `st-bridge.js` is the only file that touches SillyTavern internals.
 - [`PLAN.md`](PLAN.md) has the architecture and decisions, and [`docs/manual-test.md`](docs/manual-test.md) is the hands-on checklist for a real phone.
+
+## Also in this repository: Graph Memory
+
+[`graph-memory/`](graph-memory/README.md) is a separate SillyTavern add-on that gives characters long-term memory. The AI notes who and what appears in a chat, [graphify](https://github.com/safishamsi/graphify) keeps those notes as a knowledge graph, and the relevant memories are added to the prompt before each reply. It's independent of WhatsChat and installed on its own.

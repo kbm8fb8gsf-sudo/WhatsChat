@@ -1,0 +1,75 @@
+/* SillyTavern's .menu_button sets display, which would otherwise override [hidden]. */
+.graph-memory-settings [hidden] {
+    display: none !important;
+}
+
+.graph-memory-settings .gm-row .menu_button {
+    flex: 1 1 auto;
+    width: auto;
+    margin: 0;
+}
+
+.graph-memory-settings h4 {
+    margin: 12px 0 4px;
+}
+
+.graph-memory-settings .gm-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 4px 0;
+}
+
+.graph-memory-settings .gm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 4px 12px;
+}
+
+.graph-memory-settings .gm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+
+.graph-memory-settings .gm-status {
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+    white-space: pre-wrap;
+}
+
+.graph-memory-settings .gm-status.gm-bad {
+    border-left: 3px solid var(--warning, #e18a24);
+}
+
+.graph-memory-settings .gm-status.gm-good {
+    border-left: 3px solid var(--okGreen, #4caf50);
+}
+
+.graph-memory-settings .gm-progress {
+    margin: 4px 0;
+    font-style: italic;
+}
+
+.graph-memory-settings .gm-details summary {
+    cursor: pointer;
+    margin: 4px 0;
+}
+
+.graph-memory-settings .gm-pre {
+    max-height: 300px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.9em;
+    margin: 0;
+    padding: 6px;
+    border-radius: 6px;
+    background: var(--black30a, rgba(0, 0, 0, 0.3));
+}
+
+.graph-memory-settings .gm-hint {
+    opacity: 0.8;
+}

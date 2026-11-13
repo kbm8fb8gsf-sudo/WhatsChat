@@ -1,0 +1,6 @@
+node_modules/
+coverage/
+# Runtime state: the memories themselves. Never commit.
+data/
+__pycache__/
+*.log
