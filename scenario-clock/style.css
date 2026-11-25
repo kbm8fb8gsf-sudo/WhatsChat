@@ -1,0 +1,135 @@
+/* Scenario Clock */
+
+/* ---- Time tags in messages ---- */
+
+#chat.scenario-clock-tags-hide .scenario-clock-tag,
+#chat.scenario-clock-tags-hide .scenario-clock-tag-only {
+    display: none;
+}
+
+#chat.scenario-clock-tags-badge .scenario-clock-tag {
+    font-size: 0;
+    white-space: nowrap;
+}
+
+#chat.scenario-clock-tags-badge .scenario-clock-tag::before {
+    content: attr(data-label);
+    display: inline-block;
+    font-size: 0.75em;
+    font-size: calc(var(--mainFontSize, 1rem) * 0.75);
+    font-style: normal;
+    padding: 0 0.5em;
+    margin: 0 0.15em;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, 0.5));
+    border-radius: 1em;
+    opacity: 0.75;
+    vertical-align: middle;
+}
+
+/* ---- Story time in message headers ---- */
+
+.scenario-clock-stamp {
+    margin-left: 0.6em;
+    opacity: 0.65;
+    white-space: nowrap;
+    font-size: calc(var(--mainFontSize, 1rem) * 0.8);
+}
+
+.scenario-clock-stamp::before {
+    content: '\1F552\FE0E';
+    margin-right: 0.3em;
+}
+
+/* ---- Settings panel ---- */
+
+.scenario-clock-settings h4 {
+    margin: 0.6em 0 0.25em;
+}
+
+.scenario-clock-settings label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+
+.scenario-clock-settings label.checkbox_label {
+    flex-direction: row;
+    align-items: center;
+}
+
+.scenario-clock-settings label.scenario-clock-inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.scenario-clock-inline input[type='number'] {
+    width: 5em;
+    margin: 0;
+}
+
+.scenario-clock-face {
+    text-align: center;
+    padding: 6px 0 2px;
+}
+
+.scenario-clock-face-time {
+    font-size: 2em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.scenario-clock-face-date {
+    opacity: 0.8;
+}
+
+.scenario-clock-face-off {
+    opacity: 0.5;
+}
+
+.scenario-clock-quick,
+.scenario-clock-row,
+.scenario-clock-pending {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin: 4px 0;
+}
+
+.scenario-clock-quick .menu_button,
+.scenario-clock-row .menu_button,
+.scenario-clock-pending .menu_button {
+    margin: 0;
+    width: auto;
+    padding: 3px 8px;
+}
+
+.scenario-clock-row input.text_pole,
+.scenario-clock-row label {
+    flex: 1 1 8em;
+    min-width: 0;
+    margin: 0;
+}
+
+.scenario-clock-settings [hidden] {
+    display: none !important;
+}
+
+.scenario-clock-pending small {
+    flex: 1 1 auto;
+}
+
+.scenario-clock-indent {
+    padding-left: 1.6em;
+}
+
+.scenario-clock-settings details {
+    margin: 6px 0;
+}
+
+.scenario-clock-settings details summary {
+    cursor: pointer;
+}

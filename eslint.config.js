@@ -24,7 +24,7 @@ export default defineConfig(
         },
     },
     {
-        files: ['extension/**/*.js'],
+        files: ['extension/**/*.js', 'scenario-clock/**/*.js'],
         languageOptions: {
             globals: { ...globals.browser, SillyTavern: 'readonly' },
         },

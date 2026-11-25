@@ -1,0 +1,156 @@
+<div class="scenario-clock-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Scenario Clock</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="scenario-clock-face" data-role="face">
+                <div class="scenario-clock-face-time" data-role="face-time"></div>
+                <div class="scenario-clock-face-date" data-role="face-date"></div>
+            </div>
+            <small data-role="message"></small>
+
+            <div data-role="running" hidden>
+                <div class="scenario-clock-quick">
+                    <div class="menu_button" data-change="+10m" title="Move the clock forward 10 minutes">+10 min</div>
+                    <div class="menu_button" data-change="+1h" title="Move the clock forward 1 hour">+1 hour</div>
+                    <div class="menu_button" data-change="+6h" title="Move the clock forward 6 hours">+6 hours</div>
+                    <div class="menu_button" data-change="tomorrow 07:00" title="Jump to 7:00 AM the next day">Next morning</div>
+                    <div class="menu_button" data-change="+1d" title="Move the clock forward 1 day">+1 day</div>
+                </div>
+                <div class="scenario-clock-row">
+                    <input class="text_pole" type="text" data-role="change" placeholder="+2h30m, 18:00, tomorrow 9am, friday, 2024-03-15 18:00">
+                    <div class="menu_button" data-action="apply" title="Move or set the clock">Apply</div>
+                </div>
+                <div class="scenario-clock-pending" data-role="pending" hidden>
+                    <small data-role="pending-text"></small>
+                    <div class="menu_button" data-action="undo" title="Take back the last change made after the latest message">Undo</div>
+                </div>
+                <label class="scenario-clock-inline">
+                    <span>Each message without a time tag adds</span>
+                    <input class="text_pole" type="number" min="0" max="1440" step="1" data-role="chat-rate">
+                    <span>minutes (this chat, from now on)</span>
+                </label>
+                <details>
+                    <summary>Restart or remove this chat's clock</summary>
+                    <div class="scenario-clock-row">
+                        <input class="text_pole" type="date" data-role="restart-date">
+                        <input class="text_pole" type="time" data-role="restart-time">
+                    </div>
+                    <div class="scenario-clock-row">
+                        <div class="menu_button" data-action="restart" title="Set the clock to this date and time, as of the latest message">Restart clock</div>
+                        <div class="menu_button" data-action="stop" title="Remove the clock from this chat">Remove clock</div>
+                    </div>
+                </details>
+            </div>
+
+            <div data-role="stopped" hidden>
+                <small>What date and time is it in the story right now?</small>
+                <div class="scenario-clock-row">
+                    <input class="text_pole" type="date" data-role="start-date">
+                    <input class="text_pole" type="time" data-role="start-time">
+                </div>
+                <div class="scenario-clock-row">
+                    <div class="menu_button" data-action="start">Start clock</div>
+                    <div class="menu_button" data-action="use-now" title="Fill in today's real date and time">Use real date and time</div>
+                </div>
+            </div>
+
+            <hr>
+            <h4>Settings</h4>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="enabled">
+                <span>Enabled</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="aiTags">
+                <span>Let the AI move the clock with time tags like [TIME: +2h]</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="autoStart">
+                <span>Start a clock in new chats automatically</span>
+            </label>
+            <div class="scenario-clock-indent">
+                <label>
+                    <span>New clocks start at</span>
+                    <select class="text_pole" data-setting="startMode">
+                        <option value="real">The real date and time</option>
+                        <option value="fixed">A date and time I choose</option>
+                    </select>
+                </label>
+                <div class="scenario-clock-row" data-role="fixed-start">
+                    <input class="text_pole" type="date" data-role="fixed-date">
+                    <input class="text_pole" type="time" data-role="fixed-time">
+                </div>
+                <small>Tip: a <code>[TIME: 1889-10-04 18:00]</code> tag in a character's greeting sets the scene for that character.</small>
+            </div>
+            <label class="scenario-clock-inline">
+                <span>New clocks: each message without a tag adds</span>
+                <input class="text_pole" type="number" min="0" max="1440" step="1" data-setting="minutesPerMessage">
+                <span>minutes</span>
+            </label>
+
+            <h4>Display</h4>
+            <label>
+                <span>Time tags in the chat</span>
+                <select class="text_pole" data-setting="tagDisplay">
+                    <option value="hide">Hide them</option>
+                    <option value="badge">Show a small clock badge</option>
+                    <option value="raw">Show them as written</option>
+                </select>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="showOnMessages">
+                <span>Show the story time on each message</span>
+            </label>
+            <label class="checkbox_label">
+                <input type="checkbox" data-setting="hour24">
+                <span>24-hour clock</span>
+            </label>
+            <label>
+                <span>Date style</span>
+                <select class="text_pole" data-setting="dateOrder">
+                    <option value="dmy">14 March 2024</option>
+                    <option value="mdy">March 14, 2024</option>
+                </select>
+            </label>
+
+            <h4>Prompt</h4>
+            <div class="scenario-clock-row">
+                <label>
+                    <span>Insert</span>
+                    <select class="text_pole" data-setting="position">
+                        <option value="chat">In the chat, at a depth</option>
+                        <option value="after">After the main prompt / story string</option>
+                        <option value="before">Before the main prompt / story string</option>
+                    </select>
+                </label>
+                <label data-role="depth-box">
+                    <span>Depth</span>
+                    <input class="text_pole" type="number" min="0" max="10000" step="1" data-setting="depth">
+                </label>
+                <label data-role="role-box">
+                    <span>As</span>
+                    <select class="text_pole" data-setting="role">
+                        <option value="system">System</option>
+                        <option value="user">User</option>
+                        <option value="assistant">AI</option>
+                    </select>
+                </label>
+            </div>
+            <small>Depth 0 puts it right after the latest message, where the AI is least likely to miss it.</small>
+            <label>
+                <span>Clock text</span>
+                <textarea class="text_pole" rows="4" data-setting="promptTemplate"></textarea>
+            </label>
+            <div class="menu_button" data-reset="promptTemplate">Reset to default</div>
+            <label>
+                <span>Time tag instructions (added when the AI may move the clock)</span>
+                <textarea class="text_pole" rows="5" data-setting="tagTemplate"></textarea>
+            </label>
+            <div class="menu_button" data-reset="tagTemplate">Reset to default</div>
+            <small>Macros, usable here and anywhere in SillyTavern: <code>{{scenario_time}}</code> <code>{{scenario_date}}</code> <code>{{scenario_weekday}}</code> <code>{{scenario_timeofday}}</code> <code>{{scenario_day}}</code> <code>{{scenario_datetime}}</code> <code>{{scenario_iso}}</code></small>
+        </div>
+    </div>
+</div>

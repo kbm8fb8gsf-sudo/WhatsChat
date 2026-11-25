@@ -176,3 +176,4 @@ npm run build   # compiles the server plugin to dist/
 - `server/src`: the plugin, in TypeScript (strict). `transport/` is the only code that knows about WhatsApp; `core/` holds the pure logic (allowlist, grouping, cleaning, splitting, pacing, queues).
 - `extension/`: the UI extension, in plain ES modules type-checked with JSDoc. `st-bridge.js` is the only file that touches SillyTavern internals.
 - [`PLAN.md`](PLAN.md) has the architecture and decisions, and [`docs/manual-test.md`](docs/manual-test.md) is the hands-on checklist for a real phone.
+- `scenario-clock/`: a separate, standalone SillyTavern extension that keeps the story's own date and time and tells the AI. It isn't part of WhatsChat; see [its README](scenario-clock/README.md).

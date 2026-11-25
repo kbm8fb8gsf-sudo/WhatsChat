@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json && tsc -p extension/jsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p extension/jsconfig.json && tsc -p scenario-clock/jsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run lint && npm run typecheck && npm run test",
