@@ -53,6 +53,8 @@ function removeOoc(text: string): string {
     return text
         .replace(/\(\([\s\S]*?\)\)/g, REMOVED)
         .replace(/\[\s*OOC\s*:[\s\S]*?\]/gi, REMOVED)
+        // Story clock tags from the SillyTweaks extension, e.g. "[TIME: +5m]".
+        .replace(/\[\s*TIME\s*:[^[\]\n]*\]/gi, REMOVED)
         .replace(/\(\s*OOC\s*:[^)]*\)/gi, REMOVED)
         .replace(/^[ \t]*OOC[ \t]*:.*$/gim, REMOVED);
 }

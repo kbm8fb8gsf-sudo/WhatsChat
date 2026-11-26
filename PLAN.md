@@ -60,7 +60,7 @@ The transport only emits 1:1 text messages. It drops groups, broadcasts, status 
 ### Core modules (`server/src/core/`). Pure unless noted.
 - **contact-router**: normalises numbers to E.164 (handling `+`, `00`, spaces, LIDs), checks the allowlist, and returns `{ok, mapping}` or `{ignored, reason}`.
 - **debouncer**: a per-contact state machine that closes a batch after `quietMs` without new messages, or at `maxWaitMs`/`maxMessages`. Timers go through an injected `Scheduler`.
-- **reply-cleaner**: strips `<think>`/reasoning blocks, leading `Name:` prefixes, `*actions*` (remove, keep or unwrap), markdown/HTML, OOC `((…))`/`[OOC: …]`, wrapping quotes and a dangling unfinished sentence. Also normalises whitespace and caps length.
+- **reply-cleaner**: strips `<think>`/reasoning blocks, leading `Name:` prefixes, `*actions*` (remove, keep or unwrap), markdown/HTML, OOC `((…))`/`[OOC: …]`, story clock tags `[TIME: …]`, wrapping quotes and a dangling unfinished sentence. Also normalises whitespace and caps length.
 - **bubble-splitter**: splits on blank lines, then on sentence boundaries above `maxBubbleChars` (never inside URLs, numbers or abbreviations). Merges fragments under `minBubbleChars` and caps at `maxBubbles`.
 - **pacing**: `planRead({readyAt, claimedAt, p, rng})` and `planDelivery({readAt, replyAt, bubbles, p, rng}) → Step[]`. A `Step` is `{at, kind:'typing'|'paused'|'send', bubble?}`. Typing time is `clamp(chars / cps × jitter)`. Time spent generating counts as typing for bubble 1. The RNG is seeded and injected.
 - **contact-queue**: runs `Step[]` per contact in order. Different contacts run in parallel. Supports `cancelAll()` and `flush(timeoutMs)`. Not pure: it uses the injected Scheduler.

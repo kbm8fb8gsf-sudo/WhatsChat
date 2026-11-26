@@ -118,7 +118,7 @@ The hidden copy connects to the AI by itself when it starts, even if **Auto-conn
 - **One conversation at a time.** SillyTavern has a single open chat, so if several people write at once they're answered in turn.
 - **Your chat comes back.** After replying, WhatsChat returns SillyTavern to the chat you were on. You can turn this off. If you're in the middle of generating something yourself, it waits for you to finish first.
 - **Nothing is "seen" until SillyTavern picks it up.** If no SillyTavern tab is open, messages wait unread. When you open a tab they're answered, unless they're over 12 hours old.
-- **Replies are tidied for texting.** WhatsChat removes things like `Seraphina:` prefixes, `*smiles*` actions, `<think>` reasoning, OOC notes and markdown before sending. Your SillyTavern chat keeps the original.
+- **Replies are tidied for texting.** WhatsChat removes things like `Seraphina:` prefixes, `*smiles*` actions, `<think>` reasoning, OOC notes, [SillyTweaks](https://github.com/kbm8fb8gsf-sudo/SillyTweaks) story clock tags like `[TIME: +5m]`, and markdown before sending. Your SillyTavern chat keeps the original.
 - **Photos, voice notes and stickers** arrive as text such as `[sent a photo]` so the character knows. You can turn this off.
 - **Contacts can't use `{{shortcodes}}`.** Text a contact types is passed on as-is, so they can't read your persona or system prompt or change your variables. You can turn this off.
 
@@ -176,4 +176,4 @@ npm run build   # compiles the server plugin to dist/
 - `server/src`: the plugin, in TypeScript (strict). `transport/` is the only code that knows about WhatsApp; `core/` holds the pure logic (allowlist, grouping, cleaning, splitting, pacing, queues).
 - `extension/`: the UI extension, in plain ES modules type-checked with JSDoc. `st-bridge.js` is the only file that touches SillyTavern internals.
 - [`PLAN.md`](PLAN.md) has the architecture and decisions, and [`docs/manual-test.md`](docs/manual-test.md) is the hands-on checklist for a real phone.
-- `scenario-clock/`: a separate, standalone SillyTavern extension that keeps the story's own date and time and tells the AI. It isn't part of WhatsChat; see [its README](scenario-clock/README.md).
+- `scenario-clock/`: an early copy of a separate SillyTavern extension, not part of WhatsChat. It's now maintained as [SillyTweaks](https://github.com/kbm8fb8gsf-sudo/SillyTweaks).
